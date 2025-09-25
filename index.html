@@ -2241,15 +2241,15 @@ data.locations.forEach(pataka => {
 
             card.innerHTML = `
                 <div class="cupboard-header">
-                    <div class="cupboard-name">\${pataka.name}</div>
-                    <div class="distance">\${pataka.distance}</div>
+                    <div class="cupboard-name">${pataka.name}</div>
+                    <div class="distance">${pataka.distance}</div>
                 </div>
-                <div class="cupboard-address">📍 \${pataka.address}</div>
+                <div class="cupboard-address">📍 ${pataka.address}</div>
                 <div class="status-indicator">
-                    <div class="status-dot \${statusClass}"></div>
-                    <div class="status-text">\${statusText}</div>
+                    <div class="status-dot ${statusClass}"></div>
+                    <div class="status-text">${statusText}</div>
                     <div style="margin-left: auto; font-size: 0.8rem; color: #999;">
-                        Updated \${pataka.lastUpdated}
+                        Updated ${pataka.lastUpdated}
                     </div>
                 </div>
                 ${
@@ -2260,12 +2260,12 @@ data.locations.forEach(pataka => {
                                    ${
                                        previewItems.map(item => {
                                            const itemEmoji = getItemEmoji(item.Name, item.Category);
-                                           return `<span class="food-tag">\${itemEmoji} \${item.Name}</span>`;
+                                           return `<span class="food-tag">${itemEmoji} ${item.Name}</span>`;
                                        }).join('')
                                    }
                                    ${
                                        pataka.inventory.length > 4
-                                           ? `<span class="food-tag">+\${pataka.inventory.length - 4} more</span>`
+                                           ? `<span class="food-tag">+${pataka.inventory.length - 4} more</span>`
                                            : ''
                                    }
                                </div>`
@@ -2305,9 +2305,9 @@ data.locations.forEach(pataka => {
                                 const itemEmoji = getItemEmoji(item.Name, item.Category);
                                 return `
                                     <div class="inventory-item">
-                                        <span class="item-emoji">\${itemEmoji}</span>
-                                        <div class="item-name">\${item.Name}</div>
-                                        <div class="item-count">\${item.Quantity || 1} available</div>
+                                        <span class="item-emoji">${itemEmoji}</span>
+                                        <div class="item-name">${item.Name}</div>
+                                        <div class="item-count">${item.Quantity || 1} available</div>
                                     </div>
                                 `;
                             }).join('')
@@ -2329,6 +2329,24 @@ data.locations.forEach(pataka => {
             card.appendChild(detailDiv);
         }
 
-    </script>
+    
+async function showPatakaDetailsByName(patakaName) {
+    // Go to List view so the card is visible
+    await switchToList();
+    // Find the pataka object and its card
+    const pataka = (cupboards || []).find(p => p.name === patakaName);
+    const cards = document.querySelectorAll('.cupboard-card');
+    const card = Array.from(cards).find(c => c.dataset.patakaName === patakaName);
+    if (card && pataka) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // ensure only one detail block is open
+        const existing = card.querySelector('.inventory-detail');
+        if (existing) existing.remove();
+        toggleInventoryDetail(card, pataka);
+    } else {
+        console.warn('Pataka card not found for name:', patakaName);
+    }
+}
+</script>
 </body>
 </html>
