@@ -2156,29 +2156,23 @@ const API_BASE_URL = 'https://oth-pataka-api-facpcna9c9hjc5dh.australiaeast-01.a
             }
         }
 
-        async function loadPatakasOnMap() {
-            await fetchCupboards();
-            
-            if (map && datasource && cupboards.length > 0) {
-                datasource.clear();
-                
-                cupboards.forEach(pataka => {
-                    const point = new atlas.data.Feature(new atlas.data.Point([pataka.longitude, pataka.latitude]), {
-                        title: pataka.name,
-                        address: pataka.address,
-                        status: pataka.status,
-                        lastUpdated: pataka.lastUpdated
-                    });
-                    
-                    datasource.add(point);
-                });
-
-                map.setCamera({
-                    bounds: atlas.data.BoundingBox.fromData(datasource.toJson()),
-                    padding: 50
-                });
-            }
-        }
+async function loadPatakasOnMap() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/MapsProxy?action=locations`);
+        const data = await response.json();
+        
+        data.locations.forEach(pataka => {
+            L.marker([pataka.lat, pataka.lng])
+                .addTo(map)
+                .bindPopup(`
+                    <h3>${pataka.name}</h3>
+                    <p>Click for more details</p>
+                `);
+        });
+    } catch (error) {
+        console.error('Error loading map locations:', error);
+    }
+}
 
         function renderCupboards(filteredCupboards = cupboards) {
             const listContainer = document.getElementById('listView');
