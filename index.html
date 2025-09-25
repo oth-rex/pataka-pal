@@ -2095,68 +2095,18 @@ const API_BASE_URL = 'https://oth-pataka-api-facpcna9c9hjc5dh.australiaeast-01.a
 
         // Map and data functions
         function initializeMap() {
-            console.log('Map temporarily disabled for testing'); return; map = new atlas.Map('azureMap', {
-                center: [174.075, -39.057],
-                zoom: 12,
-                style: 'road',
-                authOptions: {
-                    authType: 'subscriptionKey',
-                    subscriptionKey: AZURE_MAPS_KEY
-                }
-            });
-
-            map.events.add('ready', function () {
-                datasource = new atlas.source.DataSource();
-                map.sources.add(datasource);
-
-                const symbolLayer = new atlas.layer.SymbolLayer(datasource, null, {
-                    iconOptions: {
-                        image: 'pin-red',
-                        anchor: 'center',
-                        allowOverlap: true,
-                        size: 1.0
-                    }
-                });
-                
-                map.layers.add(symbolLayer);
-
-                // Add click event to the symbol layer (not datasource)
-                map.events.add('click', symbolLayer, function(e) {
-                    if (e.shapes && e.shapes.length > 0) {
-                        const properties = e.shapes[0].getProperties();
-                        const coordinates = e.shapes[0].getCoordinates();
-                        
-                        const popupContent = `
-                            <div style="padding: 15px; max-width: 280px; word-wrap: break-word;">
-                                <h3 style="margin: 0 0 10px 0; color: #289DA7; font-size: 1.1rem; line-height: 1.3; word-break: break-word; white-space: normal; overflow-wrap: break-word;">${properties.title}</h3>
-                                <p style="margin: 0 0 8px 0; color: #666; font-size: 0.9rem;">📍 ${properties.address}</p>
-                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                                    <span style="width: 10px; height: 10px; border-radius: 50%; background: ${getStatusColor(properties.status)}; flex-shrink: 0;"></span>
-                                    <span style="font-weight: 500; text-transform: capitalize;">${properties.status.replace('_', ' ')}</span>
-                                </div>
-                                <p style="margin: 0; color: #999; font-size: 0.8rem;">Updated ${properties.lastUpdated}</p>
-                            </div>
-                        `;
-
-                        new atlas.Popup({
-                            content: popupContent,
-                            position: coordinates,
-                            pixelOffset: [0, -40]
-                        }).open(map);
-                    }
-                });
-
-                // Add hover effects
-                map.events.add('mouseenter', symbolLayer, function () {
-                    map.getCanvasContainer().style.cursor = 'pointer';
-                });
-
-                map.events.add('mouseleave', symbolLayer, function () {
-                    map.getCanvasContainer().style.cursor = 'grab';
-                });
-
-                loadPatakasOnMap();
-            });
+    const mapElement = document.getElementById('azureMap');
+    
+    // Initialize Leaflet map
+    map = L.map('azureMap').setView([-39.057, 174.075], 12);
+    
+    // Add OpenStreetMap tiles (free)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+    
+    // Load pataka locations from your proxy
+    loadPatakasOnMap();
         }
 
         async function fetchCupboards() {
