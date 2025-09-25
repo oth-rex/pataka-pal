@@ -788,7 +788,27 @@
                 max-width: 100%;
             }
         }
-    </style>
+    
+/* --- Auto-highlight for scrolled-to card --- */
+.cupboard-card.highlighted {
+    outline: 2px solid #289DA7;
+    box-shadow: 0 0 0 6px rgba(40,157,167,0.2);
+    transition: background-color 0.3s ease, box-shadow 0.3s ease, outline-color 0.3s ease;
+    background-color: rgba(40,157,167,0.06);
+    border-radius: 16px;
+}
+
+
+/* --- Selected card auto-highlight (subtle yellow) --- */
+.cupboard-card.selected-highlight {
+    background-color: #fff7cc; /* subtle yellow */
+    outline: 2px solid rgba(255, 208, 0, 0.65);
+    box-shadow: 0 0 0 6px rgba(255, 208, 0, 0.20);
+    transition: background-color 0.4s ease, box-shadow 0.4s ease, outline-color 0.4s ease;
+    border-radius: 16px;
+}
+
+</style>
 </head>
 <body>
     <div class="app-container">
@@ -2339,6 +2359,20 @@ async function showPatakaDetailsByName(patakaName) {
     const card = Array.from(cards).find(c => c.dataset.patakaName === patakaName);
     if (card && pataka) {
         card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        
+        
+        // Move the selected card to the very top of the list
+        const listContainer = document.getElementById('cupboardList') || document.querySelector('.cupboards-list');
+        if (listContainer && card.parentElement === listContainer) {
+            listContainer.insertBefore(card, listContainer.firstChild);
+        }
+
+        // Apply a visible yellow highlight for a few seconds
+        card.classList.add('selected-highlight');
+        setTimeout(() => card.classList.remove('selected-highlight'), 4500);
+        // highlight the card for a moment
+        card.classList.add('highlighted');
+        setTimeout(() => card.classList.remove('highlighted'), 2500);
         // ensure only one detail block is open
         const existing = card.querySelector('.inventory-detail');
         if (existing) existing.remove();
