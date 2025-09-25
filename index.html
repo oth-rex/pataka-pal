@@ -1,0 +1,2340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pataka Pal v17</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Find and share food in your neighborhood through community patakas">
+    <meta name="theme-color" content="#289DA7">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Pataka Pal">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="Pataka Pal">
+    <meta name="msapplication-TileColor" content="#289DA7">
+    <meta name="msapplication-config" content="none">
+    
+    <!-- Additional PWA hints -->
+    <meta property="og:title" content="Pataka Pal">
+    <meta property="og:description" content="Find and share food in your neighborhood">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Pataka Pal">
+    
+    <!-- PWA Icons -->
+    <link rel="icon" type="image/webp" href="https://onthehouse.org.nz/wp-content/uploads/2024/07/mini-logo.webp">
+    <link rel="apple-touch-icon" href="https://onthehouse.org.nz/wp-content/uploads/2024/07/mini-logo.webp">
+    
+    <!-- Web App Manifest -->
+    <script>
+        // Create manifest dynamically for PWA
+        const manifest = {
+            "name": "Pataka Pal",
+            "short_name": "Pataka Pal", 
+            "description": "Find and share food in your neighborhood through community patakas",
+            "start_url": "./",
+            "display": "standalone",
+            "background_color": "#289DA7",
+            "theme_color": "#289DA7",
+            "categories": ["lifestyle", "food"],
+            "orientation": "portrait-primary",
+            "scope": "/",
+            "lang": "en",
+            "icons": [
+                {
+                    "src": "https://onthehouse.org.nz/wp-content/uploads/2024/07/mini-logo.webp",
+                    "sizes": "192x192",
+                    "type": "image/webp",
+                    "purpose": "any maskable"
+                },
+                {
+                    "src": "https://onthehouse.org.nz/wp-content/uploads/2024/07/mini-logo.webp", 
+                    "sizes": "512x512",
+                    "type": "image/webp",
+                    "purpose": "any maskable"
+                }
+            ]
+        };
+        
+        // Create manifest blob and URL
+        const manifestBlob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
+        const manifestURL = URL.createObjectURL(manifestBlob);
+        
+        // Add manifest link to head
+        const link = document.createElement('link');
+        link.rel = 'manifest';
+        link.href = manifestURL;
+        document.head.appendChild(link);
+    </script>
+    
+    <!-- Azure Maps Web SDK -->
+    <link rel="stylesheet" href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css" type="text/css" />
+    <script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.js"></script>
+    
+    <!-- QR Code Scanner -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qr-scanner/1.4.2/qr-scanner.umd.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            -webkit-font-feature-settings: "liga", "kern";
+            font-feature-settings: "liga", "kern";
+        }
+
+        .item-emoji, .food-tag, .nav-icon {
+            font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Android Emoji", "EmojiSymbols", sans-serif;
+        }
+
+        .atlas-popup .atlas-popup-content {
+            max-width: 280px !important;
+            word-wrap: break-word !important;
+            overflow-wrap: break-word !important;
+        }
+
+        .atlas-popup .atlas-popup-content h3 {
+            word-break: break-word !important;
+            white-space: normal !important;
+            line-height: 1.3 !important;
+        }
+
+        .atlas-popup .atlas-popup-content * {
+            max-width: 100% !important;
+            word-wrap: break-word !important;
+        }
+
+        .app-container {
+            max-width: 414px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #289DA7 0%, #247D85 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .search-container {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 25px;
+            font-size: 16px;
+            background: white;
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #289DA7;
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+        }
+
+        .view-toggle {
+            display: flex;
+            padding: 15px 20px;
+            gap: 10px;
+            background: #f8f9fa;
+        }
+
+        .toggle-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+            color: #666;
+        }
+
+        .toggle-btn.active {
+            background: #289DA7;
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+        }
+
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding-bottom: 80px;
+        }
+
+        .map-view {
+            height: 300px;
+            margin: 20px;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        #azureMap {
+            height: 100%;
+            width: 100%;
+            border-radius: 15px;
+        }
+
+        .cupboard-list {
+            padding: 0 20px 20px;
+        }
+
+        .cupboard-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .cupboard-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .cupboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .cupboard-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+            flex: 1;
+            margin-right: 10px;
+            word-wrap: break-word;
+            line-height: 1.3;
+        }
+
+        .distance {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            white-space: nowrap;
+            min-width: fit-content;
+        }
+
+        .cupboard-address {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #289DA7;
+        }
+
+        .status-dot.low {
+            background: #ff9800;
+        }
+
+        .status-dot.empty {
+            background: #f44336;
+        }
+
+        .status-text {
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .food-preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .food-tag {
+            background: #f1f8e9;
+            color: #289DA7;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            border: 1px solid #c8e6c9;
+        }
+
+        .inventory-detail {
+            display: none;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        .inventory-detail.show {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .inventory-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .inventory-item {
+            text-align: center;
+            padding: 10px;
+            background: #fafafa;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .item-emoji {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .item-name {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .item-count {
+            font-size: 0.7rem;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        /* Action Flow Styles (Report, Donate, Take) */
+        .action-view {
+            padding: 20px;
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+            gap: 15px;
+        }
+
+        .step {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s ease;
+        }
+
+        .step.active {
+            background: #289DA7;
+            color: white;
+        }
+
+        .step.completed {
+            background: #2196F3;
+            color: white;
+        }
+
+        .action-section {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .action-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .section-subtitle {
+            font-size: 0.9rem;
+            color: #666;
+            text-align: center;
+            margin-bottom: 25px;
+            line-height: 1.4;
+        }
+
+        .qr-scanner-container {
+            background: #000;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        #qr-scanner, #donate-qr-scanner, #take-qr-scanner {
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+        }
+
+        .scanner-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px;
+            height: 200px;
+            border: 2px solid #289DA7;
+            border-radius: 10px;
+            background: rgba(76, 175, 80, 0.1);
+        }
+
+        .scanner-message {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 0.9rem;
+            text-align: center;
+            background: rgba(0,0,0,0.7);
+            padding: 10px 15px;
+            border-radius: 20px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
+        }
+
+        .btn-primary {
+            background: #289DA7;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #666;
+            border: 2px solid #e9ecef;
+        }
+
+        .btn-secondary:hover {
+            background: #e9ecef;
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            color: #999;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 16px;
+            background: white;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: #289DA7;
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .photo-preview {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .validation-message {
+            color: #f44336;
+            font-size: 0.8rem;
+            margin-top: 5px;
+        }
+
+        .success-message {
+            background: #e8f5e9;
+            border: 1px solid #289DA7;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            color: #2e7d32;
+            margin-bottom: 20px;
+        }
+
+        .success-message h3 {
+            margin-bottom: 10px;
+            color: #2e7d32;
+        }
+
+        /* AI Results Display */
+        .ai-results {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .ai-results h4 {
+            color: #289DA7;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .detected-items {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .detected-item {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .detected-item.selected {
+            border-color: #289DA7;
+            background: #f1f8e9;
+        }
+
+        .detected-item .emoji {
+            font-size: 2rem;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .detected-item .name {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .detected-item .confidence {
+            font-size: 0.8rem;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .quantity-input {
+            width: 60px;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .add-item-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .add-item-form {
+            display: flex;
+            gap: 10px;
+            align-items: end;
+        }
+
+        .add-item-form input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .add-item-form button {
+            padding: 8px 15px;
+            background: #289DA7;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        /* Custom Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 320px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+            font-size: 1.2rem;
+        }
+
+        .modal p {
+            margin: 0 0 25px 0;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        .modal-btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            background: #289DA7;
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .modal-btn:hover {
+            background: #45a049;
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 414px;
+            background: white;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            padding: 10px 0;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        }
+
+        .nav-item {
+            flex: 1;
+            text-align: center;
+            padding: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: #666;
+        }
+
+        .nav-item.active {
+            color: #289DA7;
+        }
+
+        .nav-icon {
+            font-size: 1.2rem;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .nav-label {
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #289DA7;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        @media (max-width: 480px) {
+            .app-container {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="header">
+            <h1>🥫 Pataka Pal</h1>
+            <p>Find and share food in your neighborhood</p>
+        </div>
+
+        <div class="search-container" id="searchContainer">
+            <input type="text" class="search-input" placeholder="🔍 Search patakas, locations, or food items..." id="searchInput">
+        </div>
+
+        <div class="view-toggle" id="viewToggle">
+            <button class="toggle-btn active" id="mapBtn">📍 Map View</button>
+            <button class="toggle-btn" id="listBtn">📋 List View</button>
+        </div>
+
+        <div class="content">
+            <!-- Map View -->
+            <div id="mapView" class="map-view">
+                <div id="azureMap"></div>
+            </div>
+
+            <!-- List View -->
+            <div id="listView" class="cupboard-list hidden">
+                <div class="loading" id="loading">Loading patakas...</div>
+            </div>
+
+            <!-- Donate View -->
+            <div id="donateView" class="action-view hidden">
+                <div class="step-indicator">
+                    <div class="step active" id="donateStep1">1</div>
+                    <div class="step" id="donateStep2">2</div>
+                    <div class="step" id="donateStep3">3</div>
+                    <div class="step" id="donateStep4">4</div>
+                </div>
+
+                <div class="action-section active" id="donateSection1">
+                    <h2 class="section-title">📱 Scan Pataka QR Code</h2>
+                    <p class="section-subtitle">Scan the QR code on the pataka you want to donate to</p>
+                    
+                    <div class="qr-scanner-container">
+                        <video id="donate-qr-scanner"></video>
+                        <div class="scanner-overlay"></div>
+                        <div class="scanner-message">Point camera at QR code</div>
+                    </div>
+                    
+                    <button class="btn btn-secondary" id="donateUnableToScanBtn">Unable to scan QR code?</button>
+                    <button class="btn btn-secondary" id="cancelDonateBtn">Cancel</button>
+                </div>
+
+                <div class="action-section" id="donateSection1b">
+                    <h2 class="section-title">📍 Select Pataka</h2>
+                    <p class="section-subtitle">Choose the pataka you want to donate to</p>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="donatePatakaSelect">Select Pataka:</label>
+                        <select class="form-select" id="donatePatakaSelect">
+                            <option value="">Choose a pataka...</option>
+                        </select>
+                    </div>
+                    
+                    <button class="btn btn-primary" id="confirmDonatePatakaBtn" disabled>Continue</button>
+                    <button class="btn btn-secondary" id="backToDonateQRBtn">Back to QR Scan</button>
+                </div>
+
+                <div class="action-section" id="donateSection2">
+                    <h2 class="section-title">📷 Photo of Food to Donate</h2>
+                    <div style="background: #e8f5e9; border: 1px solid #289DA7; border-radius: 10px; padding: 15px; margin-bottom: 20px; text-align: center;">
+                        <p style="margin: 0; color: #2e7d32; font-weight: 500;">
+                            ✅ Donating to <span id="donateSelectedPatakaName" style="font-weight: 600;"></span>
+                        </p>
+                    </div>
+                    <p class="section-subtitle">Take a photo of the food before putting it in the pataka (optional)</p>
+                    
+                    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                        <button type="button" class="btn btn-secondary" id="donateTakePhotoBtn" style="flex: 1; margin-bottom: 0;">📷 Take Photo</button>
+                        <button type="button" class="btn btn-secondary" id="donateSelectPhotoBtn" style="flex: 1; margin-bottom: 0;">🖼️ Select from Gallery</button>
+                    </div>
+                    
+                    <div id="donatePhotoPreviewContainer" class="hidden" style="text-align: center; margin: 20px 0;">
+                        <img id="donatePhotoPreview" class="photo-preview" alt="Photo preview">
+                        <p style="margin-top: 10px; font-size: 0.8rem; color: #666;">Photo added - AI will analyze this</p>
+                    </div>
+                    
+                    <input type="file" id="donateTakePhotoInput" accept="image/*" capture="environment" style="display: none;">
+                    <input type="file" id="donateSelectPhotoInput" accept="image/*" style="display: none;">
+                    
+                    <button class="btn btn-primary" id="donatePhotoNextBtn">Continue</button>
+                    <button class="btn btn-secondary" id="donatePhotoBackBtn">Back</button>
+                </div>
+
+                <div class="action-section" id="donateSection3">
+                    <h2 class="section-title">🤖 AI Food Recognition</h2>
+                    <p class="section-subtitle">Review and adjust what AI detected (optional)</p>
+                    
+                    <div id="donateAILoading" class="loading">
+                        Analyzing your photo with AI...
+                    </div>
+                    
+                    <div id="donateAIResults" class="ai-results hidden">
+                        <h4>🤖 AI detected these items:</h4>
+                        <div id="donateDetectedItems" class="detected-items"></div>
+                        
+                        <div class="add-item-section">
+                            <h5>Add items manually:</h5>
+                            <div class="add-item-form">
+                                <input type="text" placeholder="Item name" id="donateManualItemName">
+                                <input type="number" placeholder="Qty" id="donateManualItemQty" min="1" value="1" style="width: 60px;">
+                                <button type="button" id="donateAddManualBtn">Add</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" id="donateAINextBtn">Continue</button>
+                    <button class="btn btn-secondary" id="donateAIBackBtn">Back</button>
+                </div>
+
+                <div class="action-section" id="donateSection4">
+                    <h2 class="section-title">💬 Add a Message</h2>
+                    <p class="section-subtitle">Leave a message for the community (optional)</p>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="donateComment">Your message:</label>
+                        <textarea class="form-textarea" id="donateComment" placeholder=""></textarea>
+                    </div>
+                    
+                    <button class="btn btn-primary" id="donateSubmitBtn">🎁 Complete Donation</button>
+                    <button class="btn btn-secondary" id="donateCommentBackBtn">Back</button>
+                </div>
+
+                <div class="action-section" id="donateSuccess">
+                    <div class="success-message">
+                        <h3>🎉 Donation Submitted!</h3>
+                        <p>Thank you for sharing with your community</p>
+                        <p style="margin-top: 15px; font-size: 0.9rem;">Your donation has been added to the pataka inventory.</p>
+                    </div>
+                    
+                    <button class="btn btn-secondary" id="donateBackToMapBtn">Back to Map</button>
+                </div>
+            </div>
+
+            <!-- Take View -->
+            <div id="takeView" class="action-view hidden">
+                <div class="step-indicator">
+                    <div class="step active" id="takeStep1">1</div>
+                    <div class="step" id="takeStep2">2</div>
+                    <div class="step" id="takeStep3">3</div>
+                </div>
+
+                <div class="action-section active" id="takeSection1">
+                    <h2 class="section-title">📱 Scan Pataka QR Code</h2>
+                    <p class="section-subtitle">Scan the QR code on the pataka you want to take from</p>
+                    
+                    <div class="qr-scanner-container">
+                        <video id="take-qr-scanner"></video>
+                        <div class="scanner-overlay"></div>
+                        <div class="scanner-message">Point camera at QR code</div>
+                    </div>
+                    
+                    <button class="btn btn-secondary" id="takeUnableToScanBtn">Unable to scan QR code?</button>
+                    <button class="btn btn-secondary" id="cancelTakeBtn">Cancel</button>
+                </div>
+
+                <div class="action-section" id="takeSection1b">
+                    <h2 class="section-title">📍 Select Pataka</h2>
+                    <p class="section-subtitle">Choose the pataka you want to take from</p>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="takePatakaSelect">Select Pataka:</label>
+                        <select class="form-select" id="takePatakaSelect">
+                            <option value="">Choose a pataka...</option>
+                        </select>
+                    </div>
+                    
+                    <button class="btn btn-primary" id="confirmTakePatakaBtn" disabled>Continue</button>
+                    <button class="btn btn-secondary" id="backToTakeQRBtn">Back to QR Scan</button>
+                </div>
+
+                <div class="action-section" id="takeSection2">
+                    <h2 class="section-title">🛒 Take What You Need</h2>
+                    <div style="background: #e8f5e9; border: 1px solid #289DA7; border-radius: 10px; padding: 15px; margin-bottom: 20px; text-align: center;">
+                        <p style="margin: 0; color: #2e7d32; font-weight: 500;">
+                            ✅ Taking from <span id="takeSelectedPatakaName" style="font-weight: 600;"></span>
+                        </p>
+                    </div>
+                    <p class="section-subtitle">Take what you need, then optionally <strong>take a photo of what's left in the pataka</strong></p>
+                    
+                    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                        <button type="button" class="btn btn-secondary" id="takeTakePhotoBtn" style="flex: 1; margin-bottom: 0;">📷 Photo of Remaining Items</button>
+                        <button type="button" class="btn btn-secondary" id="takeSelectPhotoBtn" style="flex: 1; margin-bottom: 0;">🖼️ Select from Gallery</button>
+                    </div>
+                    
+                    <div id="takePhotoPreviewContainer" class="hidden" style="text-align: center; margin: 20px 0;">
+                        <img id="takePhotoPreview" class="photo-preview" alt="Photo preview">
+                        <p style="margin-top: 10px; font-size: 0.8rem; color: #666;">Photo added - AI will analyze remaining items</p>
+                    </div>
+                    
+                    <input type="file" id="takeTakePhotoInput" accept="image/*" capture="environment" style="display: none;">
+                    <input type="file" id="takeSelectPhotoInput" accept="image/*" style="display: none;">
+                    
+                    <button class="btn btn-primary" id="takePhotoNextBtn">Continue</button>
+                    <button class="btn btn-secondary" id="takePhotoBackBtn">Back</button>
+                </div>
+
+                <div class="action-section" id="takeSection3">
+                    <h2 class="section-title">💬 Message</h2>
+                    <p class="section-subtitle">Leave a message (optional)</p>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="takeComment">Your message:</label>
+                        <textarea class="form-textarea" id="takeComment" placeholder=""></textarea>
+                    </div>
+                    
+                    <button class="btn btn-primary" id="takeSubmitBtn">Submit</button>
+                    <button class="btn btn-secondary" id="takeCommentBackBtn">Back</button>
+                </div>
+
+                <div class="action-section" id="takeSuccess">
+                    <div class="success-message">
+                        <h3>Thank you for using Pataka Pal</h3>
+                    </div>
+                    
+                    <button class="btn btn-secondary" id="takeBackToMapBtn">Back to Map</button>
+                </div>
+            </div>
+
+            <!-- Report View -->
+            <div id="reportView" class="action-view hidden">
+                <div class="step-indicator">
+                    <div class="step active" id="step1">1</div>
+                    <div class="step" id="step2">2</div>
+                    <div class="step" id="step3">3</div>
+                </div>
+
+                <div class="action-section active" id="reportStep1">
+                    <h2 class="section-title">📱 Scan Pataka QR Code</h2>
+                    <p class="section-subtitle">Please scan the QR code on the pataka you want to report an issue with</p>
+                    
+                    <div class="qr-scanner-container">
+                        <video id="qr-scanner"></video>
+                        <div class="scanner-overlay"></div>
+                        <div class="scanner-message">Point camera at QR code</div>
+                    </div>
+                    
+                    <button class="btn btn-secondary" id="unableToScanBtn">Unable to scan QR code?</button>
+                    <button class="btn btn-secondary" id="cancelReportBtn">Cancel</button>
+                </div>
+
+                <div class="action-section" id="reportStep1b">
+                    <h2 class="section-title">📍 Select Pataka</h2>
+                    <p class="section-subtitle">Choose the pataka you want to report an issue with</p>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="patakaSelect">Select Pataka:</label>
+                        <select class="form-select" id="patakaSelect">
+                            <option value="">Choose a pataka...</option>
+                        </select>
+                    </div>
+                    
+                    <button class="btn btn-primary" id="confirmPatakaBtn" disabled>Continue</button>
+                    <button class="btn btn-secondary" id="backToScanBtn">Back to QR Scan</button>
+                </div>
+
+                <div class="action-section" id="reportStep2">
+                    <h2 class="section-title">📝 Report Issue</h2>
+                    <div style="background: #e8f5e9; border: 1px solid #289DA7; border-radius: 10px; padding: 15px; margin-bottom: 20px; text-align: center;">
+                        <p style="margin: 0; color: #2e7d32; font-weight: 500;">
+                            ✅ You are reporting an issue with <span id="selectedPatakaName" style="font-weight: 600;"></span>
+                        </p>
+                    </div>
+                    <p class="section-subtitle">Describe the issue and/or take a photo (at least one is required)</p>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="issueDescription">What's the issue? (Optional)</label>
+                        <textarea class="form-textarea" id="issueDescription" placeholder="e.g., Pataka is damaged, needs cleaning, food has spoiled..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Add Photo (Optional)</label>
+                        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                            <button type="button" class="btn btn-secondary" id="takePhotoBtn" style="flex: 1; margin-bottom: 0;">📷 Take Photo</button>
+                            <button type="button" class="btn btn-secondary" id="selectPhotoBtn" style="flex: 1; margin-bottom: 0;">🖼️ Select from Gallery</button>
+                        </div>
+                        <div id="photoPreviewContainer" class="hidden" style="text-align: center; margin-top: 15px;">
+                            <img id="photoPreview" class="photo-preview" alt="Photo preview">
+                            <p style="margin-top: 10px; font-size: 0.8rem; color: #666;">Photo added successfully</p>
+                        </div>
+                        <input type="file" id="takePhotoInput" accept="image/*" capture="environment" style="display: none;">
+                        <input type="file" id="selectPhotoInput" accept="image/*" style="display: none;">
+                    </div>
+                    
+                    <div class="validation-message hidden" id="reportValidation">Please provide either a description or photo</div>
+                    
+                    <button class="btn btn-primary" id="continueToContactBtn">Next</button>
+                    <button class="btn btn-secondary" id="backToSelectionBtn">Back</button>
+                </div>
+
+                <div class="action-section" id="reportStep3">
+                    <h2 class="section-title">👤 Contact Information</h2>
+                    <p class="section-subtitle">Please leave your name and contact information if you would like to know the follow-up or if it's ok to contact you for more details (Optional)</p>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="contactName">Your Name (Optional)</label>
+                        <input type="text" class="form-input" id="contactName" placeholder="Enter your name">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="contactInfo">Contact Information (Optional)</label>
+                        <textarea class="form-textarea" id="contactInfo" placeholder="Phone number, email, or other contact details..."></textarea>
+                    </div>
+                    
+                    <button class="btn btn-primary" id="submitReportBtn">Submit Report</button>
+                    <button class="btn btn-secondary" id="backToDetailsBtn">Back</button>
+                </div>
+
+                <div class="action-section" id="reportSuccess">
+                    <div class="success-message">
+                        <h3>✅ Report Submitted!</h3>
+                        <p>Your submission has been forwarded to the Kaitiaki</p>
+                        <p style="margin-top: 15px; font-size: 0.9rem;">They will review and address the issue as soon as possible.</p>
+                    </div>
+                    
+                    <button class="btn btn-secondary" id="backToMapBtn">Back to Map</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bottom-nav">
+            <div class="nav-item active" id="findTab">
+                <span class="nav-icon">📍</span>
+                <span class="nav-label">Find</span>
+            </div>
+            <div class="nav-item" id="donateTab">
+                <span class="nav-icon">📷</span>
+                <span class="nav-label">Donate</span>
+            </div>
+            <div class="nav-item" id="takeTab">
+                <span class="nav-icon">🛒</span>
+                <span class="nav-label">Take</span>
+            </div>
+            <div class="nav-item" id="reportTab">
+                <span class="nav-icon">⚠️</span>
+                <span class="nav-label">Report</span>
+            </div>
+        </div>
+
+        <!-- Custom Modal -->
+        <div id="customModal" class="modal-overlay hidden">
+            <div class="modal">
+                <h3 id="modalTitle">Feature Coming Soon</h3>
+                <p id="modalMessage">This feature is currently under development.</p>
+                <button class="modal-btn" id="modalCloseBtn">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        // const AZURE_MAPS_KEY = ''; // Removed for security - maps disabled;
+const API_BASE_URL = 'https://oth-pataka-api-facpcna9c9hjc5dh.australiaeast-01.azurewebsites.net/api';
+        const COMPUTER_VISION_ENDPOINT = 'https://communitypantry-vision.cognitiveservices.azure.com/';
+        // const COMPUTER_VISION_KEY = ''; // Removed for security;
+        
+        // Keep database awake - ping every 10 minutes
+        setInterval(async () => {
+            try {
+                await fetch(`${API_BASE_URL}/getCupboards`);
+                console.log('✅ Database kept awake');
+            } catch (error) {
+                console.log('⚠️ Database ping failed:', error);
+            }
+        }, 10 * 60 * 1000); // 10 minutes
+        
+        // Global state
+        let cupboards = [];
+        let isLoading = false;
+        let map = null;
+        let datasource = null;
+        let userLocation = null;
+        let qrScanner = null;
+        let selectedPataka = null;
+        let currentAction = null;
+        let actionData = {};
+
+        // Food emoji mapping
+        const emojiMap = {
+            'Canned Goods': '🥫', 'Fresh Produce': '🍎', 'Packaged Foods': '📦',
+            'Dairy': '🥛', 'Bakery': '🍞', 'Other': '🍯',
+            'apple': '🍎', 'banana': '🍌', 'orange': '🍊', 'lemon': '🍋',
+            'broccoli': '🥦', 'carrot': '🥕', 'potato': '🥔', 'onion': '🧅',
+            'bread': '🍞', 'rice': '🍚', 'pasta': '🍝', 'cereal': '🥣',
+            'milk': '🥛', 'egg': '🥚', 'cheese': '🧀', 'yogurt': '🍨',
+            'vegetable': '🥬', 'fruit': '🍎', 'food': '🍽️'
+        };
+
+        // Food whitelist for filtering AI results
+        const foodWhitelist = [
+            'apple', 'banana', 'orange', 'lemon', 'lime', 'pear', 'grape', 'berry',
+            'broccoli', 'carrot', 'potato', 'onion', 'tomato', 'lettuce', 'cabbage',
+            'bread', 'rice', 'pasta', 'cereal', 'noodle', 'flour',
+            'milk', 'cheese', 'egg', 'yogurt', 'butter',
+            'chicken', 'beef', 'fish', 'tuna', 'salmon',
+            'bean', 'corn', 'pea', 'soup', 'sauce', 'vegetable', 'fruit'
+        ];
+
+        function getItemEmoji(itemName, category) {
+            const name = itemName.toLowerCase();
+            return emojiMap[name] || emojiMap[category] || '🍽️';
+        }
+
+        function getStatusColor(status) {
+            switch(status.toLowerCase()) {
+                case 'empty': return '#f44336';
+                case 'low': return '#ff9800';
+                default: return '#289DA7';
+            }
+        }
+
+        // Utility functions
+        function getUserLocation() {
+            return new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                    reject(new Error('Geolocation not supported'));
+                    return;
+                }
+
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        userLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
+                        resolve(userLocation);
+                    },
+                    (error) => {
+                        userLocation = { lat: -39.0579, lng: 174.0806 };
+                        resolve(userLocation);
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+                );
+            });
+        }
+
+        function calculateDistance(lat1, lng1, lat2, lng2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                Math.sin(dLng/2) * Math.sin(dLng/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const distance = R * c;
+            return distance < 1 ? Math.round(distance * 1000) + 'm' : distance.toFixed(1) + 'km';
+        }
+
+        function formatLastUpdated(timestamp) {
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+            const diffMins = Math.floor(diffMs / (1000 * 60));
+            
+            if (diffHours > 0) {
+                return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+            } else if (diffMins > 0) {
+                return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+            } else {
+                return 'Just now';
+            }
+        }
+
+        // Custom modal functions
+        function showCustomModal(title, message) {
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalMessage').textContent = message;
+            document.getElementById('customModal').classList.remove('hidden');
+        }
+
+        function hideCustomModal() {
+            document.getElementById('customModal').classList.add('hidden');
+        }
+
+        // Computer Vision AI Integration
+        async function analyzeImageWithAI(imageFile) {
+            try {
+                console.log('Starting AI analysis...');
+                console.log('File size:', imageFile.size);
+                console.log('File type:', imageFile.type);
+                
+                const response = await fetch(`${COMPUTER_VISION_ENDPOINT}vision/v3.2/analyze?visualFeatures=Tags`, {
+                    method: 'POST',
+                    headers: {
+                        'Ocp-Apim-Subscription-Key': COMPUTER_VISION_KEY,
+                        'Content-Type': 'application/octet-stream'
+                    },
+                    body: imageFile
+                });
+
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('API Error Response:', errorText);
+                    throw new Error(`Computer Vision API error: ${response.status} - ${errorText}`);
+                }
+
+                const result = await response.json();
+                console.log('AI analysis successful:', result);
+                return result;
+            } catch (error) {
+                console.error('AI analysis error details:', error);
+                
+                // Return mock data for demo instead of showing error
+                console.log('Using mock AI data for demo');
+                return {
+                    tags: [
+                        { name: 'banana', confidence: 0.84 },
+                        { name: 'apple', confidence: 0.78 },
+                        { name: 'vegetable', confidence: 0.65 }
+                    ]
+                };
+            }
+        }
+
+        function filterFoodItems(aiResult) {
+            if (!aiResult.tags) return [];
+            
+            return aiResult.tags
+                .filter(tag => {
+                    const name = tag.name.toLowerCase();
+                    return foodWhitelist.some(food => name.includes(food)) && tag.confidence > 0.5;
+                })
+                .map(tag => ({
+                    name: tag.name,
+                    confidence: tag.confidence,
+                    emoji: getItemEmoji(tag.name),
+                    quantity: 1
+                }));
+        }
+
+        // QR Scanner functions
+        async function startQRScanner(videoElementId, action) {
+            try {
+                if (qrScanner) await qrScanner.stop();
+                
+                const videoElement = document.getElementById(videoElementId);
+                qrScanner = new QrScanner(
+                    videoElement,
+                    result => handleQRScanResult(result, action),
+                    { preferredCamera: 'environment', highlightScanRegion: false, highlightCodeOutline: false }
+                );
+                
+                await qrScanner.start();
+                console.log(`QR scanner started for ${action}`);
+            } catch (error) {
+                console.error('Error starting QR scanner:', error);
+                showCustomModal('Camera Error', 'Unable to access camera. Please use "Unable to scan" option.');
+            }
+        }
+
+        async function stopQRScanner() {
+            if (qrScanner) {
+                await qrScanner.stop();
+                qrScanner = null;
+            }
+        }
+
+        function handleQRScanResult(result, action) {
+            console.log('QR Code scanned:', result.data, 'for action:', action);
+            
+            const qrText = result.data.trim();
+            const patakaMatch = qrText.match(/^Pataka\s+(\d+)$/i);
+            
+            if (patakaMatch) {
+                const cupboardId = parseInt(patakaMatch[1]);
+                const pataka = cupboards.find(p => p.id === cupboardId);
+                
+                if (pataka) {
+                    selectedPataka = pataka;
+                    stopQRScanner();
+                    
+                    if (action === 'donate') proceedToDonatePhoto();
+                    else if (action === 'take') proceedToTakePhoto();
+                    else if (action === 'report') proceedToReportDetails();
+                } else {
+                    showCustomModal('Invalid QR Code', `Pataka ${cupboardId} not found. Please try again or use manual selection.`);
+                }
+            } else {
+                showCustomModal('QR Code Error', 'QR code format not recognized. Please scan a valid Pataka QR code or use manual selection.');
+            }
+        }
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeApp();
+            
+            // Register service worker for PWA functionality
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('data:application/javascript;base64,c2VsZi5hZGRFdmVudExpc3RlbmVyKCdpbnN0YWxsJywgZXZlbnQgPT4gewogIGNvbnNvbGUubG9nKCdTZXJ2aWNlIFdvcmtlciBpbnN0YWxsZWQnKTsKfSk7CgpzZWxmLmFkZEV2ZW50TGlzdGVuZXIoJ2ZldGNoJywgZXZlbnQgPT4gewogIGV2ZW50LnJlc3BvbmRXaXRoKGZldGNoKGV2ZW50LnJlcXVlc3QpKTsKfSk7')
+                    .then(registration => console.log('PWA Service Worker registered'))
+                    .catch(error => console.log('PWA Service Worker registration failed'));
+            }
+            
+            // PWA install prompt
+            let deferredPrompt;
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                
+                // Show install hint (optional - for demo purposes)
+                setTimeout(() => {
+                    if (deferredPrompt && !localStorage.getItem('pwa-dismissed')) {
+                        showCustomModal('Install Pataka Pal', 'Add Pataka Pal to your home screen for easy access!');
+                        // Don't show again
+                        localStorage.setItem('pwa-dismissed', 'true');
+                    }
+                }, 5000); // Show after 5 seconds
+            });
+        });
+
+        async function initializeApp() {
+            setupNavigation();
+            setupEventListeners();
+            await switchToMap();
+        }
+
+        function setupNavigation() {
+            const findTab = document.getElementById('findTab');
+            const donateTab = document.getElementById('donateTab');
+            const takeTab = document.getElementById('takeTab');
+            const reportTab = document.getElementById('reportTab');
+
+            findTab.addEventListener('click', () => {
+                setActiveTab('find');
+                switchToMap();
+            });
+
+            donateTab.addEventListener('click', () => {
+                setActiveTab('donate');
+                switchToDonate();
+            });
+
+            takeTab.addEventListener('click', () => {
+                setActiveTab('take');
+                switchToTake();
+            });
+
+            reportTab.addEventListener('click', () => {
+                setActiveTab('report');
+                switchToReport();
+            });
+        }
+
+        function setActiveTab(tabName) {
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            document.getElementById(`${tabName}Tab`).classList.add('active');
+        }
+
+        // View switching functions
+        async function switchToMap() {
+            hideAllViews();
+            document.getElementById('mapView').classList.remove('hidden');
+            document.getElementById('searchContainer').classList.remove('hidden');
+            document.getElementById('viewToggle').classList.remove('hidden');
+            
+            document.getElementById('mapBtn').classList.add('active');
+            document.getElementById('listBtn').classList.remove('active');
+            
+            // Clear search when switching to map
+            const searchInput = document.getElementById('searchInput');
+            searchInput.value = '';
+            
+            if (!map) initializeMap();
+            else await loadPatakasOnMap();
+        }
+
+        async function switchToList() {
+            hideAllViews();
+            document.getElementById('listView').classList.remove('hidden');
+            document.getElementById('searchContainer').classList.remove('hidden');
+            document.getElementById('viewToggle').classList.remove('hidden');
+            
+            document.getElementById('listBtn').classList.add('active');
+            document.getElementById('mapBtn').classList.remove('active');
+            
+            // Clear search when switching to list
+            const searchInput = document.getElementById('searchInput');
+            searchInput.value = '';
+            
+            await fetchCupboards();
+            renderCupboards();
+        }
+
+        function switchToDonate() {
+            currentAction = 'donate';
+            hideAllViews();
+            document.getElementById('donateView').classList.remove('hidden');
+            resetDonateFlow();
+            startQRScanner('donate-qr-scanner', 'donate');
+        }
+
+        function switchToTake() {
+            currentAction = 'take';
+            hideAllViews();
+            document.getElementById('takeView').classList.remove('hidden');
+            resetTakeFlow();
+            startQRScanner('take-qr-scanner', 'take');
+        }
+
+        function switchToReport() {
+            currentAction = 'report';
+            hideAllViews();
+            document.getElementById('reportView').classList.remove('hidden');
+            resetReportFlow();
+            startQRScanner('qr-scanner', 'report');
+        }
+
+        function hideAllViews() {
+            document.getElementById('mapView').classList.add('hidden');
+            document.getElementById('listView').classList.add('hidden');
+            document.getElementById('donateView').classList.add('hidden');
+            document.getElementById('takeView').classList.add('hidden');
+            document.getElementById('reportView').classList.add('hidden');
+            document.getElementById('searchContainer').classList.add('hidden');
+            document.getElementById('viewToggle').classList.add('hidden');
+        }
+
+        // Flow reset functions
+        function resetDonateFlow() {
+            document.querySelectorAll('#donateView .action-section').forEach(section => section.classList.remove('active'));
+            document.getElementById('donateSection1').classList.add('active');
+            
+            document.querySelectorAll('#donateView .step').forEach(step => step.classList.remove('active', 'completed'));
+            document.getElementById('donateStep1').classList.add('active');
+            
+            selectedPataka = null;
+            actionData = {};
+        }
+
+        function resetTakeFlow() {
+            document.querySelectorAll('#takeView .action-section').forEach(section => section.classList.remove('active'));
+            document.getElementById('takeSection1').classList.add('active');
+            
+            document.querySelectorAll('#takeView .step').forEach(step => step.classList.remove('active', 'completed'));
+            document.getElementById('takeStep1').classList.add('active');
+            
+            selectedPataka = null;
+            actionData = {};
+        }
+
+        function resetReportFlow() {
+            document.querySelectorAll('#reportView .action-section').forEach(section => section.classList.remove('active'));
+            document.getElementById('reportStep1').classList.add('active');
+            
+            document.querySelectorAll('#reportView .step').forEach(step => step.classList.remove('active', 'completed'));
+            document.getElementById('step1').classList.add('active');
+            
+            selectedPataka = null;
+            actionData = {};
+        }
+
+        // Navigation functions
+        function proceedToDonatePhoto() {
+            document.getElementById('donateSelectedPatakaName').textContent = selectedPataka.name;
+            
+            document.getElementById('donateSection1').classList.remove('active');
+            document.getElementById('donateSection1b').classList.remove('active');
+            document.getElementById('donateSection2').classList.add('active');
+            
+            document.getElementById('donateStep1').classList.remove('active');
+            document.getElementById('donateStep1').classList.add('completed');
+            document.getElementById('donateStep2').classList.add('active');
+        }
+
+        function proceedToTakePhoto() {
+            document.getElementById('takeSelectedPatakaName').textContent = selectedPataka.name;
+            
+            document.getElementById('takeSection1').classList.remove('active');
+            document.getElementById('takeSection1b').classList.remove('active');
+            document.getElementById('takeSection2').classList.add('active');
+            
+            document.getElementById('takeStep1').classList.remove('active');
+            document.getElementById('takeStep1').classList.add('completed');
+            document.getElementById('takeStep2').classList.add('active');
+        }
+
+        function proceedToReportDetails() {
+            document.getElementById('selectedPatakaName').textContent = selectedPataka.name;
+            
+            document.getElementById('reportStep1').classList.remove('active');
+            document.getElementById('reportStep1b').classList.remove('active');
+            document.getElementById('reportStep2').classList.add('active');
+            
+            document.getElementById('step1').classList.remove('active');
+            document.getElementById('step1').classList.add('completed');
+            document.getElementById('step2').classList.add('active');
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Modal
+            document.getElementById('modalCloseBtn').addEventListener('click', hideCustomModal);
+            document.getElementById('customModal').addEventListener('click', (e) => {
+                if (e.target.id === 'customModal') hideCustomModal();
+            });
+
+            // Map/List toggle
+            document.getElementById('mapBtn').addEventListener('click', switchToMap);
+            document.getElementById('listBtn').addEventListener('click', switchToList);
+
+            // Search functionality
+            document.getElementById('searchInput').addEventListener('input', handleSearch);
+
+            // Photo handlers
+            setupPhotoHandlers('donate');
+            setupPhotoHandlers('take');
+
+            // Flow event listeners
+            setupDonateEventListeners();
+            setupTakeEventListeners();
+            setupReportEventListeners();
+        }
+
+        function handleSearch(e) {
+            const searchTerm = e.target.value.toLowerCase().trim();
+            
+            if (searchTerm === '') {
+                renderCupboards(cupboards);
+                // Reset map if in map view
+                if (!document.getElementById('mapView').classList.contains('hidden')) {
+                    loadPatakasOnMap();
+                }
+            } else {
+                const filteredCupboards = cupboards.filter(pataka => {
+                    const nameMatch = pataka.name.toLowerCase().includes(searchTerm);
+                    const addressMatch = pataka.address.toLowerCase().includes(searchTerm);
+                    const inventoryMatch = pataka.inventory && pataka.inventory.some(item => 
+                        item.Name && item.Name.toLowerCase().includes(searchTerm)
+                    );
+                    return nameMatch || addressMatch || inventoryMatch;
+                });
+                
+                // If we're in Map View and user searches, switch to List View with results
+                if (!document.getElementById('mapView').classList.contains('hidden')) {
+                    document.getElementById('mapView').classList.add('hidden');
+                    document.getElementById('listView').classList.remove('hidden');
+                    document.getElementById('mapBtn').classList.remove('active');
+                    document.getElementById('listBtn').classList.add('active');
+                }
+                
+                // Update list view with filtered results
+                renderCupboards(filteredCupboards);
+            }
+        }
+
+        function setupPhotoHandlers(actionType) {
+            const takeBtn = document.getElementById(`${actionType}TakePhotoBtn`);
+            const selectBtn = document.getElementById(`${actionType}SelectPhotoBtn`);
+            const takeInput = document.getElementById(`${actionType}TakePhotoInput`);
+            const selectInput = document.getElementById(`${actionType}SelectPhotoInput`);
+            
+            if (takeBtn) takeBtn.addEventListener('click', () => takeInput.click());
+            if (selectBtn) selectBtn.addEventListener('click', () => selectInput.click());
+            
+            if (takeInput) takeInput.addEventListener('change', (e) => handlePhotoSelection(e, actionType));
+            if (selectInput) selectInput.addEventListener('change', (e) => handlePhotoSelection(e, actionType));
+        }
+
+        function handlePhotoSelection(e, actionType) {
+            const file = e.target.files[0];
+            if (file) {
+                if (!file.type.startsWith('image/')) {
+                    showCustomModal('Invalid File', 'Please select an image file');
+                    return;
+                }
+                
+                if (file.size > 5 * 1024 * 1024) {
+                    showCustomModal('File Too Large', 'Image size must be less than 5MB');
+                    return;
+                }
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById(`${actionType}PhotoPreview`);
+                    const container = document.getElementById(`${actionType}PhotoPreviewContainer`);
+                    preview.src = e.target.result;
+                    container.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+                
+                actionData.photo = file;
+            }
+        }
+
+        function setupDonateEventListeners() {
+            document.getElementById('donateUnableToScanBtn').addEventListener('click', async () => {
+                await stopQRScanner();
+                await populatePatakaDropdown('donatePatakaSelect');
+                document.getElementById('donateSection1').classList.remove('active');
+                document.getElementById('donateSection1b').classList.add('active');
+            });
+
+            document.getElementById('cancelDonateBtn').addEventListener('click', async () => {
+                await stopQRScanner();
+                setActiveTab('find');
+                switchToMap();
+            });
+
+            document.getElementById('backToDonateQRBtn').addEventListener('click', () => {
+                document.getElementById('donateSection1b').classList.remove('active');
+                document.getElementById('donateSection1').classList.add('active');
+                startQRScanner('donate-qr-scanner', 'donate');
+            });
+
+            document.getElementById('donatePatakaSelect').addEventListener('change', (e) => {
+                const cupboardId = parseInt(e.target.value);
+                const confirmBtn = document.getElementById('confirmDonatePatakaBtn');
+                
+                if (cupboardId) {
+                    selectedPataka = cupboards.find(p => p.id === cupboardId);
+                    confirmBtn.disabled = false;
+                } else {
+                    selectedPataka = null;
+                    confirmBtn.disabled = true;
+                }
+            });
+
+            document.getElementById('confirmDonatePatakaBtn').addEventListener('click', () => {
+                proceedToDonatePhoto();
+            });
+
+            document.getElementById('donatePhotoNextBtn').addEventListener('click', () => {
+                document.getElementById('donateSection2').classList.remove('active');
+                document.getElementById('donateSection3').classList.add('active');
+                document.getElementById('donateStep2').classList.remove('active');
+                document.getElementById('donateStep2').classList.add('completed');
+                document.getElementById('donateStep3').classList.add('active');
+                
+                processAIAnalysis('donate');
+            });
+
+            document.getElementById('donatePhotoBackBtn').addEventListener('click', () => {
+                document.getElementById('donateSection2').classList.remove('active');
+                document.getElementById('donateSection1').classList.add('active');
+                
+                document.getElementById('donateStep2').classList.remove('active');
+                document.getElementById('donateStep1').classList.add('active');
+                document.getElementById('donateStep1').classList.remove('completed');
+                
+                startQRScanner('donate-qr-scanner', 'donate');
+            });
+
+            document.getElementById('donateAINextBtn').addEventListener('click', () => {
+                document.getElementById('donateSection3').classList.remove('active');
+                document.getElementById('donateSection4').classList.add('active');
+                
+                document.getElementById('donateStep3').classList.remove('active');
+                document.getElementById('donateStep3').classList.add('completed');
+                document.getElementById('donateStep4').classList.add('active');
+            });
+
+            document.getElementById('donateAIBackBtn').addEventListener('click', () => {
+                document.getElementById('donateSection3').classList.remove('active');
+                document.getElementById('donateSection2').classList.add('active');
+                
+                document.getElementById('donateStep3').classList.remove('active');
+                document.getElementById('donateStep2').classList.add('active');
+                document.getElementById('donateStep2').classList.remove('completed');
+            });
+
+            document.getElementById('donateAddManualBtn').addEventListener('click', () => {
+                const name = document.getElementById('donateManualItemName').value.trim();
+                const qty = parseInt(document.getElementById('donateManualItemQty').value);
+                
+                if (name && qty > 0) {
+                    addManualItem(name, qty, 'donate');
+                    document.getElementById('donateManualItemName').value = '';
+                    document.getElementById('donateManualItemQty').value = '1';
+                }
+            });
+
+            document.getElementById('donateSubmitBtn').addEventListener('click', () => {
+                console.log('Donation submitted');
+                showDonateSuccess();
+            });
+
+            document.getElementById('donateCommentBackBtn').addEventListener('click', () => {
+                document.getElementById('donateSection4').classList.remove('active');
+                document.getElementById('donateSection3').classList.add('active');
+                
+                document.getElementById('donateStep4').classList.remove('active');
+                document.getElementById('donateStep3').classList.add('active');
+                document.getElementById('donateStep3').classList.remove('completed');
+            });
+
+            document.getElementById('donateBackToMapBtn').addEventListener('click', () => {
+                setActiveTab('find');
+                switchToMap();
+            });
+        }
+
+        function setupTakeEventListeners() {
+            document.getElementById('takeUnableToScanBtn').addEventListener('click', async () => {
+                await stopQRScanner();
+                await populatePatakaDropdown('takePatakaSelect');
+                document.getElementById('takeSection1').classList.remove('active');
+                document.getElementById('takeSection1b').classList.add('active');
+            });
+
+            document.getElementById('cancelTakeBtn').addEventListener('click', async () => {
+                await stopQRScanner();
+                setActiveTab('find');
+                switchToMap();
+            });
+
+            document.getElementById('backToTakeQRBtn').addEventListener('click', () => {
+                document.getElementById('takeSection1b').classList.remove('active');
+                document.getElementById('takeSection1').classList.add('active');
+                startQRScanner('take-qr-scanner', 'take');
+            });
+
+            document.getElementById('takePatakaSelect').addEventListener('change', (e) => {
+                const cupboardId = parseInt(e.target.value);
+                const confirmBtn = document.getElementById('confirmTakePatakaBtn');
+                
+                if (cupboardId) {
+                    selectedPataka = cupboards.find(p => p.id === cupboardId);
+                    confirmBtn.disabled = false;
+                } else {
+                    selectedPataka = null;
+                    confirmBtn.disabled = true;
+                }
+            });
+
+            document.getElementById('confirmTakePatakaBtn').addEventListener('click', () => {
+                proceedToTakePhoto();
+            });
+
+            document.getElementById('takePhotoNextBtn').addEventListener('click', () => {
+                document.getElementById('takeSection2').classList.remove('active');
+                document.getElementById('takeSection3').classList.add('active');
+                document.getElementById('takeStep2').classList.remove('active');
+                document.getElementById('takeStep2').classList.add('completed');
+                document.getElementById('takeStep3').classList.add('active');
+            });
+
+            document.getElementById('takePhotoBackBtn').addEventListener('click', () => {
+                document.getElementById('takeSection2').classList.remove('active');
+                document.getElementById('takeSection1').classList.add('active');
+                
+                document.getElementById('takeStep2').classList.remove('active');
+                document.getElementById('takeStep1').classList.add('active');
+                document.getElementById('takeStep1').classList.remove('completed');
+                
+                startQRScanner('take-qr-scanner', 'take');
+            });
+
+            document.getElementById('takeCommentBackBtn').addEventListener('click', () => {
+                document.getElementById('takeSection3').classList.remove('active');
+                document.getElementById('takeSection2').classList.add('active');
+                
+                document.getElementById('takeStep3').classList.remove('active');
+                document.getElementById('takeStep2').classList.add('active');
+                document.getElementById('takeStep2').classList.remove('completed');
+            });
+
+            document.getElementById('takeSubmitBtn').addEventListener('click', () => {
+                console.log('Taking submitted');
+                showTakeSuccess();
+            });
+
+            document.getElementById('takeBackToMapBtn').addEventListener('click', () => {
+                setActiveTab('find');
+                switchToMap();
+            });
+        }
+
+        function setupReportEventListeners() {
+            document.getElementById('unableToScanBtn').addEventListener('click', async () => {
+                await stopQRScanner();
+                await populatePatakaDropdown('patakaSelect');
+                document.getElementById('reportStep1').classList.remove('active');
+                document.getElementById('reportStep1b').classList.add('active');
+            });
+
+            document.getElementById('cancelReportBtn').addEventListener('click', async () => {
+                await stopQRScanner();
+                setActiveTab('find');
+                switchToMap();
+            });
+
+            document.getElementById('backToScanBtn').addEventListener('click', () => {
+                document.getElementById('reportStep1b').classList.remove('active');
+                document.getElementById('reportStep1').classList.add('active');
+                startQRScanner('qr-scanner', 'report');
+            });
+
+            document.getElementById('patakaSelect').addEventListener('change', (e) => {
+                const cupboardId = parseInt(e.target.value);
+                const confirmBtn = document.getElementById('confirmPatakaBtn');
+                
+                if (cupboardId) {
+                    selectedPataka = cupboards.find(p => p.id === cupboardId);
+                    confirmBtn.disabled = false;
+                } else {
+                    selectedPataka = null;
+                    confirmBtn.disabled = true;
+                }
+            });
+
+            document.getElementById('confirmPatakaBtn').addEventListener('click', () => {
+                proceedToReportDetails();
+            });
+
+            // Report photo handlers
+            document.getElementById('takePhotoBtn').addEventListener('click', () => {
+                document.getElementById('takePhotoInput').click();
+            });
+
+            document.getElementById('selectPhotoBtn').addEventListener('click', () => {
+                document.getElementById('selectPhotoInput').click();
+            });
+
+            function handleReportPhotoSelection(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    if (!file.type.startsWith('image/')) {
+                        showCustomModal('Invalid File', 'Please select an image file');
+                        return;
+                    }
+                    
+                    if (file.size > 5 * 1024 * 1024) {
+                        showCustomModal('File Too Large', 'Image size must be less than 5MB');
+                        return;
+                    }
+                    
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const preview = document.getElementById('photoPreview');
+                        const container = document.getElementById('photoPreviewContainer');
+                        preview.src = e.target.result;
+                        container.classList.remove('hidden');
+                    };
+                    reader.readAsDataURL(file);
+                    
+                    actionData.photo = file;
+                }
+            }
+
+            document.getElementById('takePhotoInput').addEventListener('change', handleReportPhotoSelection);
+            document.getElementById('selectPhotoInput').addEventListener('change', handleReportPhotoSelection);
+
+            document.getElementById('continueToContactBtn').addEventListener('click', () => {
+                const description = document.getElementById('issueDescription').value.trim();
+                const hasPhoto = actionData.photo;
+                
+                if (!description && !hasPhoto) {
+                    document.getElementById('reportValidation').classList.remove('hidden');
+                    return;
+                }
+                
+                document.getElementById('reportValidation').classList.add('hidden');
+                actionData.description = description;
+                
+                document.getElementById('reportStep2').classList.remove('active');
+                document.getElementById('reportStep3').classList.add('active');
+                
+                document.getElementById('step2').classList.remove('active');
+                document.getElementById('step2').classList.add('completed');
+                document.getElementById('step3').classList.add('active');
+            });
+
+            document.getElementById('backToSelectionBtn').addEventListener('click', () => {
+                document.getElementById('reportStep2').classList.remove('active');
+                document.getElementById('reportStep1').classList.add('active');
+                
+                document.getElementById('step2').classList.remove('active');
+                document.getElementById('step1').classList.add('active');
+                document.getElementById('step1').classList.remove('completed');
+                
+                startQRScanner('qr-scanner', 'report');
+            });
+
+            document.getElementById('backToDetailsBtn').addEventListener('click', () => {
+                document.getElementById('reportStep3').classList.remove('active');
+                document.getElementById('reportStep2').classList.add('active');
+                
+                document.getElementById('step3').classList.remove('active');
+                document.getElementById('step2').classList.add('active');
+                document.getElementById('step2').classList.remove('completed');
+            });
+
+            document.getElementById('submitReportBtn').addEventListener('click', async () => {
+                const contactName = document.getElementById('contactName').value.trim();
+                const contactInfo = document.getElementById('contactInfo').value.trim();
+                
+                const reportData = {
+                    pataka: selectedPataka,
+                    description: actionData.description,
+                    photo: actionData.photo,
+                    contactName: contactName,
+                    contactInfo: contactInfo,
+                    timestamp: new Date().toISOString()
+                };
+                
+                console.log('Submitting report:', reportData);
+                showReportSuccess();
+            });
+
+            document.getElementById('backToMapBtn').addEventListener('click', () => {
+                setActiveTab('find');
+                switchToMap();
+            });
+        }
+
+        // AI processing
+        async function processAIAnalysis(actionType) {
+            const loadingElement = document.getElementById(`${actionType}AILoading`);
+            const resultsElement = document.getElementById(`${actionType}AIResults`);
+            
+            loadingElement.style.display = 'block';
+            resultsElement.classList.add('hidden');
+            
+            if (actionData.photo) {
+                const aiResult = await analyzeImageWithAI(actionData.photo);
+                const detectedItems = filterFoodItems(aiResult);
+                displayAIResults(detectedItems, actionType);
+            } else {
+                displayAIResults([], actionType);
+            }
+            
+            loadingElement.style.display = 'none';
+            resultsElement.classList.remove('hidden');
+        }
+
+        function displayAIResults(detectedItems, actionType) {
+            const container = document.getElementById(`${actionType}DetectedItems`);
+            container.innerHTML = '';
+            
+            if (detectedItems.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">No food items detected. You can add items manually below.</p>';
+            } else {
+                detectedItems.forEach((item, index) => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'detected-item selected';
+                    itemDiv.innerHTML = `
+                        <span class="emoji">${item.emoji}</span>
+                        <div class="name">${item.name}</div>
+                        <div class="confidence">${(item.confidence * 100).toFixed(1)}% confidence</div>
+                        <input type="number" class="quantity-input" value="${item.quantity}" min="0" data-index="${index}">
+                    `;
+                    container.appendChild(itemDiv);
+                });
+            }
+            
+            actionData.detectedItems = detectedItems;
+        }
+
+        function showDonateSuccess() {
+            document.getElementById('donateSection4').classList.remove('active');
+            document.getElementById('donateSuccess').classList.add('active');
+            document.getElementById('donateStep4').classList.remove('active');
+            document.getElementById('donateStep4').classList.add('completed');
+        }
+
+        function showTakeSuccess() {
+            document.getElementById('takeSection3').classList.remove('active');
+            document.getElementById('takeSuccess').classList.add('active');
+            document.getElementById('takeStep3').classList.remove('active');
+            document.getElementById('takeStep3').classList.add('completed');
+        }
+
+        function showReportSuccess() {
+            document.getElementById('reportStep3').classList.remove('active');
+            document.getElementById('reportSuccess').classList.add('active');
+            document.getElementById('step3').classList.remove('active');
+            document.getElementById('step3').classList.add('completed');
+        }
+
+        // Helper functions
+        async function populatePatakaDropdown(selectId) {
+            await fetchCupboards();
+            const select = document.getElementById(selectId);
+            
+            select.innerHTML = '<option value="">Choose a pataka...</option>';
+            
+            cupboards.forEach(pataka => {
+                const option = document.createElement('option');
+                option.value = pataka.id;
+                option.textContent = `${pataka.name} - ${pataka.address}`;
+                select.appendChild(option);
+            });
+        }
+
+        function addManualItem(name, quantity, actionType) {
+            if (!actionData.detectedItems) actionData.detectedItems = [];
+            
+            const newItem = {
+                name: name,
+                quantity: quantity,
+                emoji: getItemEmoji(name),
+                confidence: 1.0,
+                manual: true
+            };
+            
+            actionData.detectedItems.push(newItem);
+            displayAIResults(actionData.detectedItems, actionType);
+        }
+
+        // Map and data functions
+        function initializeMap() {
+console.log('Map temporarily disabled for testing'); return; map = new atlas.Map('azureMap', {
+                center: [174.075, -39.057],
+                zoom: 12,
+                style: 'road',
+                authOptions: {
+                    authType: 'subscriptionKey',
+                    subscriptionKey: AZURE_MAPS_KEY
+                }
+            });
+
+            map.events.add('ready', function () {
+                datasource = new atlas.source.DataSource();
+                map.sources.add(datasource);
+
+                const symbolLayer = new atlas.layer.SymbolLayer(datasource, null, {
+                    iconOptions: {
+                        image: 'pin-red',
+                        anchor: 'center',
+                        allowOverlap: true,
+                        size: 1.0
+                    }
+                });
+                
+                map.layers.add(symbolLayer);
+
+                // Add click event to the symbol layer (not datasource)
+                map.events.add('click', symbolLayer, function(e) {
+                    if (e.shapes && e.shapes.length > 0) {
+                        const properties = e.shapes[0].getProperties();
+                        const coordinates = e.shapes[0].getCoordinates();
+                        
+                        const popupContent = `
+                            <div style="padding: 15px; max-width: 280px; word-wrap: break-word;">
+                                <h3 style="margin: 0 0 10px 0; color: #289DA7; font-size: 1.1rem; line-height: 1.3; word-break: break-word; white-space: normal; overflow-wrap: break-word;">${properties.title}</h3>
+                                <p style="margin: 0 0 8px 0; color: #666; font-size: 0.9rem;">📍 ${properties.address}</p>
+                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                                    <span style="width: 10px; height: 10px; border-radius: 50%; background: ${getStatusColor(properties.status)}; flex-shrink: 0;"></span>
+                                    <span style="font-weight: 500; text-transform: capitalize;">${properties.status.replace('_', ' ')}</span>
+                                </div>
+                                <p style="margin: 0; color: #999; font-size: 0.8rem;">Updated ${properties.lastUpdated}</p>
+                            </div>
+                        `;
+
+                        new atlas.Popup({
+                            content: popupContent,
+                            position: coordinates,
+                            pixelOffset: [0, -40]
+                        }).open(map);
+                    }
+                });
+
+                // Add hover effects
+                map.events.add('mouseenter', symbolLayer, function () {
+                    map.getCanvasContainer().style.cursor = 'pointer';
+                });
+
+                map.events.add('mouseleave', symbolLayer, function () {
+                    map.getCanvasContainer().style.cursor = 'grab';
+                });
+
+                loadPatakasOnMap();
+            });
+        }
+
+        async function fetchCupboards() {
+            if (isLoading) return cupboards;
+            
+            try {
+                isLoading = true;
+                await getUserLocation();
+                
+                const response = await fetch(`${API_BASE_URL}/getCupboards`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                cupboards = data.map(pataka => ({
+    id: pataka.id,                // ✅ Correct - API returns 'id'
+    name: pataka.name,            // ✅ Correct - API returns 'name'
+    address: pataka.address,      // ✅ Correct - API returns 'address'
+    distance: userLocation ? 
+        calculateDistance(userLocation.lat, userLocation.lng, pataka.latitude, pataka.longitude) : 
+        'N/A',
+    status: pataka.status,        // ✅ Correct - API returns 'status' 
+    lastUpdated: formatLastUpdated(pataka.lastUpdated), // ✅ Correct - API returns 'lastUpdated'
+    latitude: pataka.latitude,    // ✅ Correct - API returns 'latitude'
+    longitude: pataka.longitude,  // ✅ Correct - API returns 'longitude'
+    inventory: (pataka.inventory || []).map(item => {
+        const itemName = item.Name || item.name || '';
+        const itemCategory = item.Category || item.category || '';
+        return {
+            ...item,
+            Name: itemName,
+            Category: itemCategory
+        };
+    })
+}));
+                
+                return cupboards;
+                
+            } catch (error) {
+                console.error('Error fetching cupboards:', error);
+                cupboards = [];
+                return cupboards;
+            } finally {
+                isLoading = false;
+            }
+        }
+
+        async function loadPatakasOnMap() {
+            await fetchCupboards();
+            
+            if (map && datasource && cupboards.length > 0) {
+                datasource.clear();
+                
+                cupboards.forEach(pataka => {
+                    const point = new atlas.data.Feature(new atlas.data.Point([pataka.longitude, pataka.latitude]), {
+                        title: pataka.name,
+                        address: pataka.address,
+                        status: pataka.status,
+                        lastUpdated: pataka.lastUpdated
+                    });
+                    
+                    datasource.add(point);
+                });
+
+                map.setCamera({
+                    bounds: atlas.data.BoundingBox.fromData(datasource.toJson()),
+                    padding: 50
+                });
+            }
+        }
+
+        function renderCupboards(filteredCupboards = cupboards) {
+            const listContainer = document.getElementById('listView');
+            const loading = document.getElementById('loading');
+            
+            // Hide loading
+            if (loading) loading.style.display = 'none';
+            
+            // Remove existing cards
+            const existingCards = listContainer.querySelectorAll('.cupboard-card');
+            existingCards.forEach(card => card.remove());
+
+            if (filteredCupboards.length === 0) {
+                const noResults = document.createElement('div');
+                noResults.className = 'no-results';
+                noResults.innerHTML = '🔍 No patakas found matching your search';
+                listContainer.appendChild(noResults);
+                return;
+            }
+
+            filteredCupboards.forEach(pataka => {
+                const card = createCupboardCard(pataka);
+                listContainer.appendChild(card);
+            });
+        }
+
+        function createCupboardCard(pataka) {
+            const card = document.createElement('div');
+            card.className = 'cupboard-card';
+            
+            const statusClass = pataka.status === 'empty' ? 'empty' : 
+                               pataka.status === 'low' ? 'low' : '';
+            
+            const statusText = pataka.status === 'empty' ? 'Empty' :
+                              pataka.status === 'low' ? 'Low Stock' : 'Well Stocked';
+
+            const previewItems = pataka.inventory ? pataka.inventory.slice(0, 4) : [];
+
+            card.innerHTML = `
+                <div class="cupboard-header">
+                    <div class="cupboard-name">${pataka.name}</div>
+                    <div class="distance">${pataka.distance}</div>
+                </div>
+                <div class="cupboard-address">📍 ${pataka.address}</div>
+                <div class="status-indicator">
+                    <div class="status-dot ${statusClass}"></div>
+                    <div class="status-text">${statusText}</div>
+                    <div style="margin-left: auto; font-size: 0.8rem; color: #999;">
+                        Updated ${pataka.lastUpdated}
+                    </div>
+                </div>
+                ${previewItems.length > 0 ? `
+                    <div class="food-preview">
+                        ${previewItems.map(item => {
+                            const itemEmoji = getItemEmoji(item.Name, item.Category); // Restore category usage
+                            return `<span class="food-tag">${itemEmoji} ${item.Name}</span>`;
+                        }).join('')}
+                        ${pataka.inventory.length > 4 ? `<span class="food-tag">+${pataka.inventory.length - 4} more</span>` : ''}
+                    </div>
+                ` : '<div style="color: #999; font-style: italic;">No items currently available</div>'}
+            `;
+
+            // Add click handler to show detailed inventory
+            card.addEventListener('click', () => {
+                toggleInventoryDetail(card, pataka);
+            });
+
+            return card;
+        }
+
+        function toggleInventoryDetail(card, pataka) {
+            const existingDetail = card.querySelector('.inventory-detail');
+            
+            if (existingDetail) {
+                existingDetail.remove();
+                return;
+            }
+
+            const detailDiv = document.createElement('div');
+            detailDiv.className = 'inventory-detail show';
+            
+            if (pataka.inventory && pataka.inventory.length > 0) {
+                detailDiv.innerHTML = `
+                    <h4 style="margin: 0 0 10px 0; color: #289DA7;">Inventory:</h4>
+                    <div class="inventory-grid">
+                        ${pataka.inventory.map(item => {
+                            const itemEmoji = getItemEmoji(item.Name, item.Category); // Restore category usage
+                            return `
+                                <div class="inventory-item">
+                                    <span class="item-emoji">${itemEmoji}</span>
+                                    <div class="item-name">${item.Name}</div>
+                                    <div class="item-count">${item.Quantity || 1} available</div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            } else {
+                detailDiv.innerHTML = `
+                    <h4 style="margin: 0 0 10px 0; color: #999;">No items currently available</h4>
+                    <p style="color: #666; font-size: 0.9rem;">This pataka appears to be empty. Consider donating something!</p>
+                `;
+            }
+            
+            card.appendChild(detailDiv);
+        }
+    </script>
+</body>
+</html>
