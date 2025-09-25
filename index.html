@@ -2094,20 +2094,29 @@ const API_BASE_URL = 'https://oth-pataka-api-facpcna9c9hjc5dh.australiaeast-01.a
         }
 
         // Map and data functions
-        function initializeMap() {
+function initializeMap() {
     const mapElement = document.getElementById('azureMap');
-    
+
     // Initialize Leaflet map
     map = L.map('azureMap').setView([-39.057, 174.075], 12);
-    
+
     // Add OpenStreetMap tiles (free)
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors'
     }).addTo(map);
-    
+
+    // NEW: catch clicks from any marker popup buttons
+    document.getElementById('azureMap').addEventListener('click', (e) => {
+        const btn = e.target.closest('.popup-details-btn');
+        if (!btn) return;
+        const name = btn.getAttribute('data-pataka-name');
+        showPatakaDetailsByName(name);
+    });
+
     // Load pataka locations from your proxy
     loadPatakasOnMap();
-        }
+}
+
 
         async function fetchCupboards() {
             if (isLoading) return cupboards;
@@ -2134,15 +2143,12 @@ const API_BASE_URL = 'https://oth-pataka-api-facpcna9c9hjc5dh.australiaeast-01.a
     lastUpdated: formatLastUpdated(pataka.lastUpdated), // ✅ Correct - API returns 'lastUpdated'
     latitude: pataka.latitude,    // ✅ Correct - API returns 'latitude'
     longitude: pataka.longitude,  // ✅ Correct - API returns 'longitude'
-    inventory: (pataka.inventory || []).map(item => {
-        const itemName = item.Name || item.name || '';
-        const itemCategory = item.Category || item.category || '';
-        return {
-            ...item,
-            Name: itemName,
-            Category: itemCategory
-        };
-    })
+inventory: (pataka.inventory || []).map(item => {
+    const itemName = item.Name || item.name || '';
+    const itemCategory = item.Category || item.category || '';
+    return { Name: itemName, Category: itemCategory };
+})
+
 }));
                 
                 return cupboards;
@@ -2161,14 +2167,17 @@ async function loadPatakasOnMap() {
         const response = await fetch(`${API_BASE_URL}/MapsProxy?action=locations`);
         const data = await response.json();
         
-        data.locations.forEach(pataka => {
-            L.marker([pataka.lat, pataka.lng])
-                .addTo(map)
-                .bindPopup(`
-                    <h3>${pataka.name}</h3>
-                    <p>Click for more details</p>
-                `);
-        });
+data.locations.forEach(pataka => {
+    const marker = L.marker([pataka.lat, pataka.lng]).addTo(map);
+    marker.bindPopup(`
+        <h3 style="margin:0 0 8px 0;">${pataka.name}</h3>
+        <button class="popup-details-btn"
+                data-pataka-name="${pataka.name}">
+            View details
+        </button>
+    `);
+});
+
     } catch (error) {
         console.error('Error loading map locations:', error);
     }
@@ -2202,6 +2211,8 @@ async function loadPatakasOnMap() {
         function createCupboardCard(pataka) {
             const card = document.createElement('div');
             card.className = 'cupboard-card';
+                card.dataset.patakaName = pataka.name; // NEW: makes it easy to find this card later
+
             
             const statusClass = pataka.status === 'empty' ? 'empty' : 
                                pataka.status === 'low' ? 'low' : '';
@@ -2250,6 +2261,31 @@ async function loadPatakasOnMap() {
                 existingDetail.remove();
                 return;
             }
+
+async function showPatakaDetailsByName(patakaName) {
+    // Switch to the List view so the user can see the card
+    await switchToList();
+
+    // Make sure we have fresh data and cards rendered
+    // (switchToList already calls fetchCupboards() and renderCupboards())
+
+    // Find the matching pataka object and card
+    const pataka = (cupboards || []).find(p => p.name === patakaName);
+    const cards = document.querySelectorAll('.cupboard-card');
+    const card = Array.from(cards).find(c => c.dataset.patakaName === patakaName);
+
+    if (card && pataka) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Open/refresh the detail section on that card
+        const existing = card.querySelector('.inventory-detail');
+        if (existing) existing.remove();
+        toggleInventoryDetail(card, pataka);
+    } else {
+        // Fallback: if we can’t find it, just show the list
+        console.warn('Pataka card not found for name:', patakaName);
+    }
+}
+
 
             const detailDiv = document.createElement('div');
             detailDiv.className = 'inventory-detail show';
