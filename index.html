@@ -286,6 +286,10 @@
             background: #ff9800;
         }
 
+        .status-dot.unknown {
+            background: #9e9e9e;
+        }
+
         .status-dot.empty {
             background: #f44336;
         }
@@ -2208,45 +2212,70 @@ data.locations.forEach(pataka => {
             });
         }
 
+        
         function createCupboardCard(pataka) {
             const card = document.createElement('div');
             card.className = 'cupboard-card';
-                card.dataset.patakaName = pataka.name; // NEW: makes it easy to find this card later
+            card.dataset.patakaName = pataka.name; // so we can find this card later
 
-            
-            const statusClass = pataka.status === 'empty' ? 'empty' : 
-                               pataka.status === 'low' ? 'low' : '';
-            
-            const statusText = pataka.status === 'empty' ? 'Empty' :
-                              pataka.status === 'low' ? 'Low Stock' : 'Well Stocked';
+            // --- Derive status from inventory presence ---
+            const hasInventoryArray = Array.isArray(pataka.inventory);
+            let derivedStatus = 'well'; // default
+            if (!hasInventoryArray) {
+                derivedStatus = 'unknown';
+            } else if (pataka.inventory.length === 0) {
+                derivedStatus = 'empty';
+            } else if (typeof pataka.status === 'string' && pataka.status.trim() !== '') {
+                derivedStatus = pataka.status.toLowerCase();
+            }
 
-            const previewItems = pataka.inventory ? pataka.inventory.slice(0, 4) : [];
+            const statusClass = derivedStatus === 'empty' ? 'empty' :
+                                derivedStatus === 'low' ? 'low' :
+                                derivedStatus === 'unknown' ? 'unknown' : '';
+
+            const statusText = derivedStatus === 'empty' ? 'Empty' :
+                               derivedStatus === 'low' ? 'Low Stock' :
+                               derivedStatus === 'unknown' ? 'Status Unknown' : 'Well Stocked';
+
+            const previewItems = hasInventoryArray ? pataka.inventory.slice(0, 4) : [];
 
             card.innerHTML = `
                 <div class="cupboard-header">
-                    <div class="cupboard-name">${pataka.name}</div>
-                    <div class="distance">${pataka.distance}</div>
+                    <div class="cupboard-name">\${pataka.name}</div>
+                    <div class="distance">\${pataka.distance}</div>
                 </div>
-                <div class="cupboard-address">📍 ${pataka.address}</div>
+                <div class="cupboard-address">📍 \${pataka.address}</div>
                 <div class="status-indicator">
-                    <div class="status-dot ${statusClass}"></div>
-                    <div class="status-text">${statusText}</div>
+                    <div class="status-dot \${statusClass}"></div>
+                    <div class="status-text">\${statusText}</div>
                     <div style="margin-left: auto; font-size: 0.8rem; color: #999;">
-                        Updated ${pataka.lastUpdated}
+                        Updated \${pataka.lastUpdated}
                     </div>
                 </div>
-                ${previewItems.length > 0 ? `
-                    <div class="food-preview">
-                        ${previewItems.map(item => {
-                            const itemEmoji = getItemEmoji(item.Name, item.Category); // Restore category usage
-                            return `<span class="food-tag">${itemEmoji} ${item.Name}</span>`;
-                        }).join('')}
-                        ${pataka.inventory.length > 4 ? `<span class="food-tag">+${pataka.inventory.length - 4} more</span>` : ''}
-                    </div>
-                ` : '<div style="color: #999; font-style: italic;">No items currently available</div>'}
+                ${
+                    // Preview logic
+                    hasInventoryArray
+                        ? (previewItems.length > 0
+                            ? `<div class="food-preview">
+                                   ${
+                                       previewItems.map(item => {
+                                           const itemEmoji = getItemEmoji(item.Name, item.Category);
+                                           return `<span class="food-tag">\${itemEmoji} \${item.Name}</span>`;
+                                       }).join('')
+                                   }
+                                   ${
+                                       pataka.inventory.length > 4
+                                           ? `<span class="food-tag">+\${pataka.inventory.length - 4} more</span>`
+                                           : ''
+                                   }
+                               </div>`
+                            : '<div style="color: #999; font-style: italic;">No items currently available</div>'
+                          )
+                        : '<div style="color: #999; font-style: italic;">Inventory status is unknown</div>'
+                }
             `;
 
-            // Add click handler to show detailed inventory
+            // Clicking the card toggles the detail section
             card.addEventListener('click', () => {
                 toggleInventoryDetail(card, pataka);
             });
@@ -2254,67 +2283,52 @@ data.locations.forEach(pataka => {
             return card;
         }
 
+
+        
         function toggleInventoryDetail(card, pataka) {
             const existingDetail = card.querySelector('.inventory-detail');
-            
             if (existingDetail) {
                 existingDetail.remove();
                 return;
             }
 
-async function showPatakaDetailsByName(patakaName) {
-    // Switch to the List view so the user can see the card
-    await switchToList();
-
-    // Make sure we have fresh data and cards rendered
-    // (switchToList already calls fetchCupboards() and renderCupboards())
-
-    // Find the matching pataka object and card
-    const pataka = (cupboards || []).find(p => p.name === patakaName);
-    const cards = document.querySelectorAll('.cupboard-card');
-    const card = Array.from(cards).find(c => c.dataset.patakaName === patakaName);
-
-    if (card && pataka) {
-        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        // Open/refresh the detail section on that card
-        const existing = card.querySelector('.inventory-detail');
-        if (existing) existing.remove();
-        toggleInventoryDetail(card, pataka);
-    } else {
-        // Fallback: if we can’t find it, just show the list
-        console.warn('Pataka card not found for name:', patakaName);
-    }
-}
-
-
             const detailDiv = document.createElement('div');
             detailDiv.className = 'inventory-detail show';
-            
-            if (pataka.inventory && pataka.inventory.length > 0) {
+
+            const hasInventoryArray = Array.isArray(pataka.inventory);
+            if (hasInventoryArray && pataka.inventory.length > 0) {
                 detailDiv.innerHTML = `
                     <h4 style="margin: 0 0 10px 0; color: #289DA7;">Inventory:</h4>
                     <div class="inventory-grid">
-                        ${pataka.inventory.map(item => {
-                            const itemEmoji = getItemEmoji(item.Name, item.Category); // Restore category usage
-                            return `
-                                <div class="inventory-item">
-                                    <span class="item-emoji">${itemEmoji}</span>
-                                    <div class="item-name">${item.Name}</div>
-                                    <div class="item-count">${item.Quantity || 1} available</div>
-                                </div>
-                            `;
-                        }).join('')}
+                        ${
+                            pataka.inventory.map(item => {
+                                const itemEmoji = getItemEmoji(item.Name, item.Category);
+                                return `
+                                    <div class="inventory-item">
+                                        <span class="item-emoji">\${itemEmoji}</span>
+                                        <div class="item-name">\${item.Name}</div>
+                                        <div class="item-count">\${item.Quantity || 1} available</div>
+                                    </div>
+                                `;
+                            }).join('')
+                        }
                     </div>
                 `;
-            } else {
+            } else if (hasInventoryArray && pataka.inventory.length === 0) {
                 detailDiv.innerHTML = `
                     <h4 style="margin: 0 0 10px 0; color: #999;">No items currently available</h4>
                     <p style="color: #666; font-size: 0.9rem;">This pataka appears to be empty. Consider donating something!</p>
                 `;
+            } else {
+                detailDiv.innerHTML = `
+                    <h4 style="margin: 0 0 10px 0; color: #999;">Inventory status is unknown</h4>
+                    <p style="color: #666; font-size: 0.9rem;">No inventory data has been received yet. Please check the pataka or try again later.</p>
+                `;
             }
-            
+
             card.appendChild(detailDiv);
         }
+
     </script>
 </body>
 </html>
