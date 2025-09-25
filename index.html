@@ -70,9 +70,9 @@
         document.head.appendChild(link);
     </script>
     
-    <!-- Azure Maps Web SDK -->
-    <link rel="stylesheet" href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css" type="text/css" />
-    <script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.js"></script>
+<!-- Leaflet Maps -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
     <!-- QR Code Scanner -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qr-scanner/1.4.2/qr-scanner.umd.min.js"></script>
@@ -2095,7 +2095,7 @@ const API_BASE_URL = 'https://oth-pataka-api-facpcna9c9hjc5dh.australiaeast-01.a
 
         // Map and data functions
         function initializeMap() {
-console.log('Map temporarily disabled for testing'); return; map = new atlas.Map('azureMap', {
+            console.log('Map temporarily disabled for testing'); return; map = new atlas.Map('azureMap', {
                 center: [174.075, -39.057],
                 zoom: 12,
                 style: 'road',
