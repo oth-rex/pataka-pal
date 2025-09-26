@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pataka Pal v17</title>
+    <title>Pataka Pal</title>
     
     <!-- PWA Meta Tags -->
     <meta name="description" content="Find and share food in your neighborhood through community patakas">
@@ -1187,7 +1187,9 @@ const API_BASE_URL = 'https://oth-pataka-api-facpcna9c9hjc5dh.australiaeast-01.a
         let cupboards = [];
         let isLoading = false;
         let map = null;
-        let datasource = null;
+        
+let markersLayer = null; // layer for Leaflet markers
+let datasource = null;
         let userLocation = null;
         let qrScanner = null;
         let selectedPataka = null;
@@ -2188,20 +2190,35 @@ inventory: (pataka.inventory || []).map(item => {
 
 async function loadPatakasOnMap() {
     try {
-        const response = await fetch(`${API_BASE_URL}/MapsProxy?action=locations`);
-        const data = await response.json();
-        
-data.locations.forEach(pataka => {
-    const marker = L.marker([pataka.lat, pataka.lng]).addTo(map);
-    marker.bindPopup(`
-        <h3 style="margin:0 0 8px 0;">${pataka.name}</h3>
-        <button class="popup-details-btn"
-                data-pataka-name="${pataka.name}">
-            View details
-        </button>
-    `);
-});
+        // Ensure up-to-date cupboards (and userLocation for distance calc)
+        await fetchCupboards();
 
+        // Create/clear a dedicated layer for markers
+        if (!markersLayer) {
+            markersLayer = L.layerGroup().addTo(map);
+        } else {
+            markersLayer.clearLayers();
+        }
+
+        const bounds = [];
+
+        (cupboards || []).forEach(pataka => {
+            if (typeof pataka.latitude !== "number" || typeof pataka.longitude !== "number") return;
+
+            const marker = L.marker([pataka.latitude, pataka.longitude]).addTo(markersLayer);
+            bounds.push([pataka.latitude, pataka.longitude]);
+
+            marker.bindPopup(`
+                <h3 style="margin:0 0 8px 0;">${pataka.name}</h3>
+                <button class="popup-details-btn" data-pataka-name="${pataka.name}">
+                    View details
+                </button>
+            `);
+        });
+
+        if (bounds.length) {
+            map.fitBounds(bounds, { padding: [40, 40] });
+        }
     } catch (error) {
         console.error('Error loading map locations:', error);
     }
