@@ -1187,9 +1187,7 @@ const API_BASE_URL = 'https://oth-pataka-api-facpcna9c9hjc5dh.australiaeast-01.a
         let cupboards = [];
         let isLoading = false;
         let map = null;
-        
-let markersLayer = null; // layer for Leaflet markers
-let datasource = null;
+        let datasource = null;
         let userLocation = null;
         let qrScanner = null;
         let selectedPataka = null;
@@ -2190,35 +2188,20 @@ inventory: (pataka.inventory || []).map(item => {
 
 async function loadPatakasOnMap() {
     try {
-        // Ensure up-to-date cupboards (and userLocation for distance calc)
-        await fetchCupboards();
+        const response = await fetch(`${API_BASE_URL}/MapsProxy?action=locations`);
+        const data = await response.json();
+        
+data.locations.forEach(pataka => {
+    const marker = L.marker([pataka.lat, pataka.lng]).addTo(map);
+    marker.bindPopup(`
+        <h3 style="margin:0 0 8px 0;">${pataka.name}</h3>
+        <button class="popup-details-btn"
+                data-pataka-name="${pataka.name}">
+            View details
+        </button>
+    `);
+});
 
-        // Create/clear a dedicated layer for markers
-        if (!markersLayer) {
-            markersLayer = L.layerGroup().addTo(map);
-        } else {
-            markersLayer.clearLayers();
-        }
-
-        const bounds = [];
-
-        (cupboards || []).forEach(pataka => {
-            if (typeof pataka.latitude !== "number" || typeof pataka.longitude !== "number") return;
-
-            const marker = L.marker([pataka.latitude, pataka.longitude]).addTo(markersLayer);
-            bounds.push([pataka.latitude, pataka.longitude]);
-
-            marker.bindPopup(`
-                <h3 style="margin:0 0 8px 0;">${pataka.name}</h3>
-                <button class="popup-details-btn" data-pataka-name="${pataka.name}">
-                    View details
-                </button>
-            `);
-        });
-
-        if (bounds.length) {
-            map.fitBounds(bounds, { padding: [40, 40] });
-        }
     } catch (error) {
         console.error('Error loading map locations:', error);
     }
@@ -2399,5 +2382,91 @@ async function showPatakaDetailsByName(patakaName) {
     }
 }
 </script>
+
+<!-- Injected: ReportIssue wiring (no secrets) -->
+<script>
+(function() {
+  const API_BASE_URL = "https://oth-pataka-api-facpcna9c9hjc5dh.australiaeast-01.azurewebsites.net/api";
+
+  async function submitReportIssueFromApp() {
+    try {
+      // Require selectedPataka from app state
+      if (typeof selectedPataka !== 'object' || !selectedPataka || !selectedPataka.id) {
+        throw new Error('No pataka selected. Please pick a pātaka first.');
+      }
+      const patakaId = Number(selectedPataka.id);
+
+      // Grab fields
+      const descEl = document.getElementById('issueDescription');
+      const nameEl = document.getElementById('contactName');
+      const contactEl = document.getElementById('contactInfo');
+      const takeEl = document.getElementById('takePhotoInput');
+      const selectEl = document.getElementById('selectPhotoInput');
+
+      const description  = descEl ? (descEl.value || '').trim() : '';
+      const reporterName = nameEl ? (nameEl.value || '').trim() : '';
+      const reporterEmail = ''; // your UI uses a freeform contact field
+      const okToContact  = contactEl && contactEl.value && contactEl.value.trim().length > 0;
+      const photoFile    = (takeEl && takeEl.files && takeEl.files[0]) ? takeEl.files[0]
+                          : (selectEl && selectEl.files && selectEl.files[0]) ? selectEl.files[0]
+                          : null;
+
+      if (!description && !photoFile) {
+        const v = document.getElementById('reportValidation');
+        if (v) { v.classList.remove('hidden'); }
+        throw new Error('Please provide either a description or a photo.');
+      }
+
+      const fd = new FormData();
+      fd.append('patakaId', patakaId);
+      if (description)   fd.append('description', description);
+      if (reporterName)  fd.append('reporterName', reporterName);
+      if (reporterEmail) fd.append('reporterEmail', reporterEmail);
+      fd.append('okToContact', okToContact ? 'true' : 'false');
+      if (photoFile)     fd.append('photo', photoFile);
+
+      const res = await fetch(API_BASE_URL + '/ReportIssue', { method: 'POST', body: fd });
+      if (!res.ok) {
+        const text = await res.text().catch(()=>''); 
+        throw new Error(text || ('HTTP ' + res.status));
+      }
+      const json = await res.json();
+      // Success UI
+      const step3 = document.getElementById('reportStep3');
+      const success = document.getElementById('reportSuccess');
+      if (step3) step3.style.display = 'none';
+      if (success) success.style.display = 'block';
+      return json;
+    } catch (err) {
+      console.error('Report submit failed:', err);
+      // Show your existing modal if available
+      if (typeof showCustomModal === 'function') {
+        showCustomModal('Report failed', (err && err.message) ? err.message : String(err));
+      } else {
+        alert((err && err.message) ? err.message : String(err));
+      }
+      throw err;
+    }
+  }
+
+  // Bind to existing "Submit Report" button
+  window.addEventListener('DOMContentLoaded', function() {
+    const btn = document.getElementById('submitReportBtn');
+    if (btn) {
+      btn.addEventListener('click', async function(ev) {
+        ev.preventDefault();
+        btn.disabled = true;
+        const original = btn.textContent;
+        btn.textContent = 'Submitting…';
+        try { await submitReportIssueFromApp(); }
+        finally { btn.disabled = false; btn.textContent = original; }
+      });
+    }
+    // expose for other scripts if needed
+    window.submitReportIssueFromApp = submitReportIssueFromApp;
+  });
+})();
+</script>
+
 </body>
 </html>
