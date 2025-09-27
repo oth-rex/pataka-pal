@@ -20,27 +20,11 @@ function initializeMap() {
         }).addTo(map);
         
         // Custom marker icon for pātaka
-        const patakaIcon = L.divIcon({
-            html: `
-                <div style="
-                    background: #289DA7;
-                    border-radius: 50%;
-                    width: 30px;
-                    height: 30px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 16px;
-                    border: 3px solid white;
-                    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-                    color: white;
-                ">🥫</div>
-            `,
-            className: 'custom-div-icon',
-            iconSize: [36, 36],
-            iconAnchor: [18, 18],
-            popupAnchor: [0, -18]
-        });
+// Use default Leaflet markers instead of custom food can icons
+// Remove the custom patakaIcon creation completely
+// The addPatakaMarker function should use default markers
+
+console.log('✅ Map initialized successfully');
         
         // Store icon for later use
         window.patakaIcon = patakaIcon;
