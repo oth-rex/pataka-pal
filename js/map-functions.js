@@ -10,25 +10,22 @@ let mapMarkers = [];
 
 function initializeMap() {
     try {
-        // Initialize Leaflet map centered on Taranaki
-        map = L.map('map').setView([-39.0631, 174.1062], 12);
-        
-        // Add OpenStreetMap tiles
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
-            maxZoom: 18
-        }).addTo(map);
-        
-        // Custom marker icon for pātaka
-// Use default Leaflet markers instead of custom food can icons
-// Remove the custom patakaIcon creation completely
-// The addPatakaMarker function should use default markers
+        // Initialize Leaflet map centered on Taranaki - CORRECT ELEMENT ID
+        map = L.map('azureMap').setView([-39.057, 174.075], 12);
 
-console.log('✅ Map initialized successfully');
-        
-        // Store icon for later use
-        window.patakaIcon = patakaIcon;
-        
+        // Add OpenStreetMap tiles (free)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Catch clicks from any marker popup buttons
+        document.getElementById('azureMap').addEventListener('click', (e) => {
+            const btn = e.target.closest('.popup-details-btn');
+            if (!btn) return;
+            const name = btn.getAttribute('data-pataka-name');
+            showPatakaDetailsByName(name);
+        });
+
         console.log('✅ Map initialized successfully');
         
     } catch (error) {
@@ -41,33 +38,33 @@ console.log('✅ Map initialized successfully');
    PATAKA MARKERS
    ======================================== */
 
-function loadPatakasOnMap() {
-    if (!map) {
-        console.warn('Map not initialized');
-        return;
-    }
-    
-    // Clear existing markers
-    clearMapMarkers();
-    
-    if (!cupboards || cupboards.length === 0) {
-        console.warn('No pātaka data to display on map');
-        return;
-    }
-    
-    cupboards.forEach(pataka => {
-        if (pataka.latitude && pataka.longitude) {
-            addPatakaMarker(pataka);
+async function loadPatakasOnMap() {
+    try {
+        // Clear existing markers
+        clearMapMarkers();
+        
+        if (!cupboards || cupboards.length === 0) {
+            console.warn('No pātaka data to display on map');
+            return;
         }
-    });
-    
-    // Fit map to show all markers
-    if (mapMarkers.length > 0) {
-        const group = new L.featureGroup(mapMarkers);
-        map.fitBounds(group.getBounds().pad(0.1));
+
+        cupboards.forEach(pataka => {
+            if (pataka.latitude && pataka.longitude) {
+                addPatakaMarker(pataka);
+            }
+        });
+
+        // Fit map to show all markers
+        if (mapMarkers.length > 0) {
+            const group = new L.featureGroup(mapMarkers);
+            map.fitBounds(group.getBounds().pad(0.1));
+        }
+
+        console.log(`✅ Added ${mapMarkers.length} pātaka markers to map`);
+        
+    } catch (error) {
+        console.error('❌ Error loading pātaka on map:', error);
     }
-    
-    console.log(`✅ Added ${mapMarkers.length} pātaka markers to map`);
 }
 
 function addPatakaMarker(pataka) {
@@ -77,30 +74,27 @@ function addPatakaMarker(pataka) {
         
         // Create popup content with View Details button
         const inventoryText = pataka.inventory && pataka.inventory.length > 0 
-            ? pataka.inventory.map(item => `• ${item.Name}: ${item.Quantity}`).join('<br>')
+            ? pataka.inventory.map(item => `${item.Name}`).join(', ')
             : 'No items currently listed';
             
         const statusClass = pataka.status === 'Available' ? 'status-available' : 'status-empty';
         
         const popupContent = `
-            <div style="max-width: 250px;">
-                <h3 style="color: #289DA7; margin-bottom: 10px; font-size: 1.1rem;">
+            <div style="max-width: 200px;">
+                <h4 style="color: #289DA7; margin-bottom: 8px; font-size: 1rem;">
                     ${pataka.name}
-                </h3>
-                <p style="margin-bottom: 8px; color: #666; font-size: 0.9rem;">
+                </h4>
+                <p style="margin: 4px 0; color: #666; font-size: 0.85rem;">
                     📍 ${pataka.address}
                 </p>
-                <div style="margin-bottom: 10px;">
-                    <strong>Current Inventory:</strong><br>
-                    <span style="font-size: 0.85rem;">${inventoryText}</span>
-                </div>
-                <div style="text-align: center; margin-top: 10px;">
-                    <span style="display: inline-block; padding: 4px 8px; border-radius: 15px; font-size: 0.8rem; font-weight: 600; ${statusClass === 'status-available' ? 'background: #e8f5e9; color: #2e7d32;' : 'background: #ffebee; color: #c62828;'}">
+                <div style="margin: 8px 0;">
+                    <span style="display: inline-block; padding: 2px 6px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; ${statusClass === 'status-available' ? 'background: #e8f5e9; color: #2e7d32;' : 'background: #ffebee; color: #c62828;'}">
                         ${pataka.status}
                     </span>
-                    <br><br>
-                    <button onclick="viewPatakaDetails(${pataka.id})" style="background: #289DA7; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer;">
-                        View Details
+                </div>
+                <div style="text-align: center; margin-top: 10px;">
+                    <button class="popup-details-btn" data-pataka-name="${pataka.name}" style="background: #289DA7; color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; font-size: 0.8rem;">
+                        View details
                     </button>
                 </div>
             </div>
@@ -114,24 +108,11 @@ function addPatakaMarker(pataka) {
     }
 }
 
-// Add this function to handle the View Details button
-function viewPatakaDetails(patakaId) {
-    switchToList();
-    // Highlight the specific pataka in list view
-    setTimeout(() => {
-        const cards = document.querySelectorAll('.cupboard-card');
-        cards.forEach(card => {
-            if (card.onclick && card.onclick.toString().includes(patakaId)) {
-                card.style.backgroundColor = '#fff3cd';
-                card.scrollIntoView({ behavior: 'smooth' });
-            }
-        });
-    }, 100);
-}
-
 function clearMapMarkers() {
     mapMarkers.forEach(marker => {
-        map.removeLayer(marker);
+        if (map) {
+            map.removeLayer(marker);
+        }
     });
     mapMarkers = [];
 }
@@ -188,8 +169,8 @@ function getCurrentLocation() {
         navigator.geolocation.getCurrentPosition(
             position => {
                 resolve({
-                    latitude: position.coords.latitude,
-                    longitude: position.coords.longitude,
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude,
                     accuracy: position.coords.accuracy
                 });
             },
@@ -205,15 +186,25 @@ function getCurrentLocation() {
     });
 }
 
+async function getUserLocation() {
+    try {
+        userLocation = await getCurrentLocation();
+        console.log('✅ User location obtained');
+    } catch (error) {
+        console.warn('❌ Could not get user location:', error.message);
+        userLocation = null;
+    }
+}
+
 async function showUserLocationOnMap() {
     try {
         const location = await getCurrentLocation();
         
         // Add user location marker
-        addLocationMarker(location.latitude, location.longitude, 'You are here');
+        addLocationMarker(location.lat, location.lng, 'You are here');
         
         // Center map on user location
-        centerMapOnLocation(location.latitude, location.longitude);
+        centerMapOnLocation(location.lat, location.lng);
         
         console.log('✅ User location added to map');
         
@@ -237,7 +228,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 
 async function findNearestPataka() {
     try {
-        const userLocation = await getCurrentLocation();
+        const location = await getCurrentLocation();
         
         if (!cupboards || cupboards.length === 0) {
             throw new Error('No pātaka data available');
@@ -249,8 +240,8 @@ async function findNearestPataka() {
         cupboards.forEach(pataka => {
             if (pataka.latitude && pataka.longitude) {
                 const distance = calculateDistance(
-                    userLocation.latitude, 
-                    userLocation.longitude,
+                    location.lat, 
+                    location.lng,
                     pataka.latitude,
                     pataka.longitude
                 );
