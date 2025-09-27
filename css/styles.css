@@ -93,6 +93,11 @@ body {
     color: white;
 }
 
+.tab-content {
+    padding-bottom: 80px; /* Space for bottom tabs */
+    min-height: calc(100vh - 140px);
+}
+
 /* ========================================
    BUTTON STYLES - FIXED HOVER COLORS
    ======================================== */
