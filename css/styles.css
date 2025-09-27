@@ -1,0 +1,568 @@
+/* ========================================
+   GLOBAL STYLES
+   ======================================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    color: #333;
+    -webkit-font-feature-settings: "liga", "kern";
+    font-feature-settings: "liga", "kern";
+}
+
+.item-emoji, .food-tag, .nav-icon {
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Android Emoji", "EmojiSymbols", sans-serif;
+}
+
+/* ========================================
+   APP CONTAINER
+   ======================================== */
+.app-container {
+    max-width: 414px;
+    margin: 0 auto;
+    background: white;
+    min-height: 100vh;
+    box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    position: relative;
+}
+
+/* ========================================
+   HEADER SECTION
+   ======================================== */
+.header {
+    background: linear-gradient(135deg, #289DA7 0%, #247D85 100%);
+    color: white;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.header h1 {
+    font-size: 1.5rem;
+    margin-bottom: 5px;
+}
+
+.header p {
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+/* ========================================
+   TAB NAVIGATION
+   ======================================== */
+.tab-nav {
+    display: flex;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 15px 10px;
+    border: none;
+    background: transparent;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-bottom: 3px solid transparent;
+}
+
+.tab-btn.active {
+    color: #289DA7;
+    border-bottom-color: #289DA7;
+    background: white;
+}
+
+.tab-btn:hover {
+    background: #1e7a82; /* FIXED: Darker shade of charity color */
+    color: white;
+}
+
+/* ========================================
+   BUTTON STYLES - FIXED HOVER COLORS
+   ======================================== */
+.btn {
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 15px;
+}
+
+.btn-primary {
+    background: #289DA7;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #1e7a82 !important; /* FIXED: Darker charity color instead of green */
+    transform: translateY(-2px);
+}
+
+.btn-secondary {
+    background: #f8f9fa;
+    color: #666;
+    border: 2px solid #e9ecef;
+}
+
+.btn-secondary:hover {
+    background: #e9ecef;
+    border-color: #289DA7;
+    color: #289DA7;
+}
+
+.btn:disabled {
+    background: #ccc;
+    color: #999;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ========================================
+   SEARCH CONTAINER
+   ======================================== */
+.search-container {
+    padding: 20px;
+    background: #f8f9fa;
+}
+
+.search-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e9ecef;
+    border-radius: 25px;
+    font-size: 16px;
+    background: white;
+    margin-bottom: 15px;
+    transition: all 0.3s ease;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #289DA7;
+    box-shadow: 0 0 0 3px rgba(40, 157, 167, 0.1);
+}
+
+.view-toggle {
+    display: flex;
+    gap: 10px;
+}
+
+.toggle-btn {
+    flex: 1;
+    padding: 10px 15px;
+    border: 2px solid #289DA7;
+    border-radius: 8px;
+    background: white;
+    color: #289DA7;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.toggle-btn.active {
+    background: #289DA7;
+    color: white;
+}
+
+.toggle-btn:hover {
+    background: #1e7a82; /* FIXED: Darker charity color */
+    color: white;
+    border-color: #1e7a82;
+}
+
+/* ========================================
+   TAB CONTENT
+   ======================================== */
+.tab-content {
+    display: none;
+    min-height: calc(100vh - 140px);
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* ========================================
+   MAP STYLES
+   ======================================== */
+.map-container {
+    height: calc(100vh - 200px);
+    position: relative;
+}
+
+#map {
+    height: 100%;
+    width: 100%;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* ========================================
+   LIST STYLES
+   ======================================== */
+.list-container {
+    padding: 20px;
+    height: calc(100vh - 200px);
+    overflow-y: auto;
+}
+
+.cupboards-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.cupboard-card {
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.cupboard-card:hover {
+    border-color: #289DA7;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+}
+
+.cupboard-card h3 {
+    color: #289DA7;
+    margin-bottom: 8px;
+    font-size: 1.1rem;
+}
+
+.cupboard-card p {
+    color: #666;
+    font-size: 0.9rem;
+    margin-bottom: 10px;
+}
+
+.cupboard-status {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.status-available {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.status-empty {
+    background: #ffebee;
+    color: #c62828;
+}
+
+/* ========================================
+   WORKFLOW SECTIONS
+   ======================================== */
+.action-section {
+    display: none;
+    padding: 20px;
+    min-height: calc(100vh - 140px);
+}
+
+.action-section.active {
+    display: block;
+}
+
+.step-indicator {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.step {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #e9ecef;
+    color: #666;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.step.active {
+    background: #289DA7;
+    color: white;
+}
+
+.step.completed {
+    background: #4caf50;
+    color: white;
+}
+
+.section-content {
+    text-align: center;
+}
+
+.section-content h2 {
+    color: #289DA7;
+    margin-bottom: 15px;
+    font-size: 1.3rem;
+}
+
+.section-content p {
+    color: #666;
+    margin-bottom: 25px;
+    line-height: 1.5;
+}
+
+/* ========================================
+   QR SCANNER STYLES
+   ======================================== */
+.qr-video {
+    width: 100%;
+    max-width: 300px;
+    height: 200px;
+    border-radius: 15px;
+    background: #f8f9fa;
+    margin: 20px auto;
+    display: block;
+    border: 2px solid #289DA7;
+}
+
+/* ========================================
+   FORM STYLES
+   ======================================== */
+.form-group {
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.form-label {
+    display: block;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.form-input, .form-select, .form-textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    font-size: 16px;
+    background: white;
+    transition: all 0.3s ease;
+}
+
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+    outline: none;
+    border-color: #289DA7;
+    box-shadow: 0 0 0 3px rgba(40, 157, 167, 0.1);
+}
+
+.form-textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+/* ========================================
+   PHOTO PREVIEW
+   ======================================== */
+.photo-preview {
+    max-width: 100%;
+    max-height: 200px;
+    border-radius: 10px;
+    margin-top: 15px;
+}
+
+.photo-preview-container {
+    text-align: center;
+    margin: 15px 0;
+}
+
+.photo-preview-container.hidden {
+    display: none;
+}
+
+/* ========================================
+   AI RESULTS DISPLAY
+   ======================================== */
+.ai-results {
+    background: #f8f9fa;
+    border-radius: 15px;
+    padding: 20px;
+    margin: 20px 0;
+    text-align: left;
+}
+
+.ai-results h4 {
+    color: #289DA7;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.detected-items {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.detected-item {
+    background: white;
+    border-radius: 10px;
+    padding: 15px;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+}
+
+.detected-item:hover {
+    border-color: #289DA7;
+}
+
+.detected-item h5 {
+    color: #289DA7;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.confidence-bar {
+    height: 4px;
+    background: #e9ecef;
+    border-radius: 2px;
+    margin: 8px 0;
+    overflow: hidden;
+}
+
+.confidence-fill {
+    height: 100%;
+    background: #289DA7;
+    transition: width 0.3s ease;
+}
+
+/* ========================================
+   MODAL STYLES
+   ======================================== */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    max-width: 90%;
+    width: 350px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.modal-content h3 {
+    color: #289DA7;
+    margin-bottom: 15px;
+}
+
+.modal-content p {
+    color: #666;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+/* ========================================
+   SUCCESS MESSAGE
+   ======================================== */
+.success-message {
+    background: #e8f5e9;
+    border: 1px solid #289DA7;
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+    color: #2e7d32;
+    margin-bottom: 20px;
+}
+
+.success-message h3 {
+    margin-bottom: 10px;
+    color: #2e7d32;
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+.text-center {
+    text-align: center;
+}
+
+.text-left {
+    text-align: left;
+}
+
+.margin-bottom {
+    margin-bottom: 20px;
+}
+
+.action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+@media (max-width: 480px) {
+    .app-container {
+        max-width: 100%;
+    }
+    
+    .header {
+        padding: 15px;
+    }
+    
+    .search-container {
+        padding: 15px;
+    }
+    
+    .action-section {
+        padding: 15px;
+    }
+    
+    .modal-content {
+        padding: 20px;
+        width: 95%;
+    }
+}
