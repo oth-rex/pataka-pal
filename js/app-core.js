@@ -7,9 +7,11 @@ let cupboards = [];
 let selectedPataka = null;
 let actionData = {};
 let map = null;
+let userLocation = null;
+let isLoading = false;
 
 // API Configuration
-const API_BASE_URL = 'oth-pataka-api-facpcna9c9hjc5dh.australiaeast-01.azurewebsites.net';
+const API_BASE_URL = 'https://oth-pataka-api-facpcna9c9hjc5dh.australiaeast-01.azurewebsites.net/api';
 
 /* ========================================
    INITIALIZATION
@@ -24,7 +26,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         setupPWAManifest();
         
         // Load pātaka data
-        await loadCupboards();
+        await fetchCupboards();
         
         // Setup all event listeners
         setupEventListeners();
@@ -48,8 +50,8 @@ function setupPWAManifest() {
     const manifest = {
         name: "Pātaka Pal",
         short_name: "PātakaPal",
-        description: "Community Food Sharing App",
-        start_url: "/",
+        description: "Find and share food in your neighbourhood",
+        start_url: "./",
         display: "standalone",
         background_color: "#ffffff",
         theme_color: "#289DA7",
@@ -76,8 +78,11 @@ function setupPWAManifest() {
    DATA LOADING FUNCTIONS
    ======================================== */
 
-async function loadCupboards() {
+async function fetchCupboards() {
+    if (isLoading) return cupboards;
+    
     try {
+        isLoading = true;
         console.log('📡 Loading pātaka data...');
         
         const response = await fetch(`${API_BASE_URL}/getCupboards`);
@@ -87,7 +92,24 @@ async function loadCupboards() {
         }
         
         const data = await response.json();
-        cupboards = data || [];
+        
+        cupboards = data.map(pataka => ({
+            id: pataka.id,
+            name: pataka.name,
+            address: pataka.address,
+            distance: userLocation ? 
+                calculateDistance(userLocation.lat, userLocation.lng, pataka.latitude, pataka.longitude) : 
+                'N/A',
+            status: pataka.status,
+            lastUpdated: formatLastUpdated(pataka.lastUpdated),
+            latitude: pataka.latitude,
+            longitude: pataka.longitude,
+            inventory: (pataka.inventory || []).map(item => {
+                const itemName = item.Name || item.name || '';
+                const itemCategory = item.Category || item.category || '';
+                return { Name: itemName, Category: itemCategory };
+            })
+        }));
         
         console.log(`✅ Loaded ${cupboards.length} pātaka locations`);
         
@@ -104,6 +126,8 @@ async function loadCupboards() {
         renderCupboards(cupboards);
         
         showCustomModal('Connection Error', 'Unable to load latest data. Showing cached information.');
+    } finally {
+        isLoading = false;
     }
 }
 
@@ -116,10 +140,7 @@ function getTestData() {
             latitude: -39.0631,
             longitude: 174.1062,
             status: "Available",
-            inventory: [
-                { Name: "Apples", Quantity: 5 },
-                { Name: "Bread", Quantity: 2 }
-            ]
+            inventory: []
         },
         {
             id: 2,
@@ -128,10 +149,7 @@ function getTestData() {
             latitude: -39.0421,
             longitude: 174.0523,
             status: "Available",
-            inventory: [
-                { Name: "Canned Goods", Quantity: 8 },
-                { Name: "Pasta", Quantity: 3 }
-            ]
+            inventory: []
         },
         {
             id: 3,
@@ -140,10 +158,7 @@ function getTestData() {
             latitude: -38.9985,
             longitude: 174.2341,
             status: "Available",
-            inventory: [
-                { Name: "Rice", Quantity: 4 },
-                { Name: "Vegetables", Quantity: 6 }
-            ]
+            inventory: []
         }
     ];
 }
@@ -291,7 +306,7 @@ function renderCupboards(cupboardsToRender) {
     cupboardsList.innerHTML = cupboardsToRender.map(cupboard => {
         const statusClass = cupboard.status === 'Available' ? 'status-available' : 'status-empty';
         const inventoryText = cupboard.inventory && cupboard.inventory.length > 0 
-            ? cupboard.inventory.map(item => `${item.Name} (${item.Quantity})`).join(', ')
+            ? cupboard.inventory.map(item => `${item.Name}`).join(', ')
             : 'No items listed';
             
         return `
@@ -314,7 +329,7 @@ function selectCupboardFromList(cupboardId) {
 
 function showCupboardDetails(cupboard) {
     const inventoryText = cupboard.inventory && cupboard.inventory.length > 0 
-        ? cupboard.inventory.map(item => `• ${item.Name}: ${item.Quantity}`).join('\n')
+        ? cupboard.inventory.map(item => `• ${item.Name}`).join('\n')
         : 'No items currently listed';
         
     const message = `
@@ -327,6 +342,99 @@ function showCupboardDetails(cupboard) {
     `;
     
     showCustomModal(cupboard.name, message);
+}
+
+function showPatakaDetailsByName(name) {
+    const pataka = cupboards.find(p => p.name === name);
+    if (pataka) {
+        switchToList();
+        setTimeout(() => {
+            const cards = document.querySelectorAll('.cupboard-card');
+            cards.forEach(card => {
+                if (card.textContent.includes(name)) {
+                    card.style.backgroundColor = '#fff3cd';
+                    card.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        }, 100);
+    }
+}
+
+/* ========================================
+   UTILITY FUNCTIONS
+   ======================================== */
+
+function showCustomModal(title, message) {
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalMessage').textContent = message;
+    document.getElementById('customModal').classList.remove('hidden');
+}
+
+function hideCustomModal() {
+    document.getElementById('customModal').classList.add('hidden');
+}
+
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return Math.round(R * c * 10) / 10; // Round to 1 decimal
+}
+
+function formatLastUpdated(dateString) {
+    if (!dateString) return 'Unknown';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    
+    if (diffHours < 1) return 'Just now';
+    if (diffHours < 24) return `${diffHours} hours ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays} days ago`;
+}
+
+function getItemEmoji(itemName) {
+    const emojiMap = {
+        'apple': '🍎', 'apples': '🍎',
+        'banana': '🍌', 'bananas': '🍌',
+        'bread': '🍞',
+        'milk': '🥛',
+        'cheese': '🧀',
+        'meat': '🥩',
+        'fish': '🐟',
+        'vegetables': '🥕', 'vegetable': '🥕',
+        'fruit': '🍇', 'fruits': '🍇',
+        'rice': '🍚',
+        'pasta': '🍝',
+        'beans': '🫘',
+        'soup': '🍲',
+        'cereal': '🥣',
+        'juice': '🧃',
+        'water': '💧',
+        'egg': '🥚', 'eggs': '🥚'
+    };
+    
+    const key = itemName.toLowerCase();
+    return emojiMap[key] || '🥫';
+}
+
+async function populatePatakaDropdown(selectId) {
+    await fetchCupboards();
+    const select = document.getElementById(selectId);
+    
+    select.innerHTML = '<option value="">Choose a pataka...</option>';
+    
+    cupboards.forEach(pataka => {
+        const option = document.createElement('option');
+        option.value = pataka.id;
+        option.textContent = `${pataka.name} - ${pataka.address}`;
+        select.appendChild(option);
+    });
 }
 
 /* ========================================
@@ -409,68 +517,4 @@ function resetReportFlow() {
     
     selectedPataka = null;
     actionData = {};
-}
-
-/* ========================================
-   UTILITY FUNCTIONS
-   ======================================== */
-
-function showCustomModal(title, message) {
-    document.getElementById('modalTitle').textContent = title;
-    document.getElementById('modalMessage').textContent = message;
-    document.getElementById('customModal').classList.remove('hidden');
-}
-
-function hideCustomModal() {
-    document.getElementById('customModal').classList.add('hidden');
-}
-
-function getItemEmoji(itemName) {
-    const emojiMap = {
-        'apple': '🍎', 'apples': '🍎',
-        'banana': '🍌', 'bananas': '🍌',
-        'bread': '🍞',
-        'milk': '🥛',
-        'cheese': '🧀',
-        'meat': '🥩',
-        'fish': '🐟',
-        'vegetables': '🥕', 'vegetable': '🥕',
-        'fruit': '🍇', 'fruits': '🍇',
-        'rice': '🍚',
-        'pasta': '🍝',
-        'beans': '🫘',
-        'soup': '🍲',
-        'cereal': '🥣',
-        'juice': '🧃',
-        'water': '💧',
-        'egg': '🥚', 'eggs': '🥚',
-        'yogurt': '🥛',
-        'butter': '🧈',
-        'jam': '🍯',
-        'honey': '🍯',
-        'nuts': '🥜',
-        'crackers': '🍘',
-        'chips': '🥔',
-        'cookies': '🍪',
-        'chocolate': '🍫',
-        'candy': '🍬',
-        'tea': '🍵',
-        'coffee': '☕',
-        'soda': '🥤',
-        'wine': '🍷',
-        'beer': '🍺'
-    };
-    
-    const key = itemName.toLowerCase();
-    return emojiMap[key] || '🥫';
-}
-
-async function populatePatakaDropdown(selectId) {
-    const select = document.getElementById(selectId);
-    if (!select) return;
-    
-    select.innerHTML = '<option value="">Select a pātaka...</option>' +
-        cupboards.map(cupboard => 
-            `<option value="${cupboard.id}">${cupboard.name}</option>`
-        ).join('');
 }
