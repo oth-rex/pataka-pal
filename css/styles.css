@@ -54,12 +54,19 @@ body {
 }
 
 /* ========================================
-   TAB NAVIGATION
+   TAB NAVIGATION - FIXED TO BOTTOM
    ======================================== */
 .tab-nav {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 414px;
+    width: 100%;
     display: flex;
     background: #f8f9fa;
-    border-bottom: 1px solid #e9ecef;
+    border-top: 1px solid #e9ecef;
+    z-index: 1000;
 }
 
 .tab-btn {
@@ -72,17 +79,17 @@ body {
     color: #666;
     cursor: pointer;
     transition: all 0.3s ease;
-    border-bottom: 3px solid transparent;
+    border-top: 3px solid transparent;
 }
 
 .tab-btn.active {
     color: #289DA7;
-    border-bottom-color: #289DA7;
+    border-top-color: #289DA7;
     background: white;
 }
 
 .tab-btn:hover {
-    background: #1e7a82; /* FIXED: Darker shade of charity color */
+    background: #1e7a82;
     color: white;
 }
 
