@@ -18,31 +18,23 @@
         <!-- Header -->
         <div class="header">
             <h1>🥫 Pātaka Pal</h1>
-            <p>Community Food Sharing</p>
-        </div>
-
-        <!-- Tab Navigation -->
-        <div class="tab-nav">
-            <button class="tab-btn active" data-tab="find">🔍 Find</button>
-            <button class="tab-btn" data-tab="donate">📤 Donate</button>
-            <button class="tab-btn" data-tab="take">📥 Take</button>
-            <button class="tab-btn" data-tab="report">⚠️ Report</button>
+            <p>Find and share food in your neighbourhood</p>
         </div>
 
         <!-- Find Tab -->
         <div id="findView" class="tab-content active">
             <!-- Search Container -->
             <div class="search-container">
-                <input type="text" id="searchInput" placeholder="🔍 Search locations or food items..." class="search-input">
+                <input type="text" id="searchInput" placeholder="🔍 Search patakas, locations, or food items..." class="search-input">
                 <div class="view-toggle">
-                    <button id="mapBtn" class="toggle-btn active">🗺️ Map</button>
-                    <button id="listBtn" class="toggle-btn">📋 List</button>
+                    <button id="mapBtn" class="toggle-btn active">🗺️ Map View</button>
+                    <button id="listBtn" class="toggle-btn">📋 List View</button>
                 </div>
             </div>
 
             <!-- Map View -->
             <div id="mapView" class="map-container">
-                <div id="map" class="map"></div>
+                <div id="azureMap" class="map"></div>
             </div>
 
             <!-- List View -->
@@ -69,7 +61,7 @@
                     <p>Point your camera at the QR code on the pātaka</p>
                     <video id="donateQRVideo" class="qr-video" playsinline></video>
                     <div class="action-buttons">
-                        <button id="donateUnableToScanBtn" class="btn btn-secondary">Unable to scan?</button>
+                        <button id="donateUnableToScanBtn" class="btn btn-secondary">Unable to scan QR code?</button>
                         <button id="cancelDonateBtn" class="btn btn-secondary">Cancel</button>
                     </div>
                 </div>
@@ -78,10 +70,10 @@
             <!-- Step 1b: Manual Selection -->
             <div id="donateSection1b" class="action-section">
                 <div class="step-indicator">
-                    <div id="donateStep1b" class="step active">1</div>
-                    <div id="donateStep2b" class="step">2</div>
-                    <div id="donateStep3b" class="step">3</div>
-                    <div id="donateStep4b" class="step">4</div>
+                    <div class="step active">1</div>
+                    <div class="step">2</div>
+                    <div class="step">3</div>
+                    <div class="step">4</div>
                 </div>
                 
                 <div class="section-content">
@@ -89,7 +81,7 @@
                     <p>Choose the pātaka you're donating to</p>
                     <div class="form-group">
                         <select id="donatePatakaSelect" class="form-select">
-                            <option value="">Select a pātaka...</option>
+                            <option value="">Choose a pataka...</option>
                         </select>
                     </div>
                     <div class="action-buttons">
@@ -101,10 +93,10 @@
             <!-- Step 2: Photo -->
             <div id="donateSection2" class="action-section">
                 <div class="step-indicator">
-                    <div id="donateStep1" class="step completed">1</div>
-                    <div id="donateStep2" class="step active">2</div>
-                    <div id="donateStep3" class="step">3</div>
-                    <div id="donateStep4" class="step">4</div>
+                    <div class="step completed">1</div>
+                    <div class="step active">2</div>
+                    <div class="step">3</div>
+                    <div class="step">4</div>
                 </div>
                 
                 <div class="section-content">
@@ -134,10 +126,10 @@
             <!-- Step 3: Items Review -->
             <div id="donateSection3" class="action-section">
                 <div class="step-indicator">
-                    <div id="donateStep1" class="step completed">1</div>
-                    <div id="donateStep2" class="step completed">2</div>
-                    <div id="donateStep3" class="step active">3</div>
-                    <div id="donateStep4" class="step">4</div>
+                    <div class="step completed">1</div>
+                    <div class="step completed">2</div>
+                    <div class="step active">3</div>
+                    <div class="step">4</div>
                 </div>
                 
                 <div class="section-content">
@@ -169,10 +161,10 @@
             <!-- Step 4: Comment -->
             <div id="donateSection4" class="action-section">
                 <div class="step-indicator">
-                    <div id="donateStep1" class="step completed">1</div>
-                    <div id="donateStep2" class="step completed">2</div>
-                    <div id="donateStep3" class="step completed">3</div>
-                    <div id="donateStep4" class="step active">4</div>
+                    <div class="step completed">1</div>
+                    <div class="step completed">2</div>
+                    <div class="step completed">3</div>
+                    <div class="step active">4</div>
                 </div>
                 
                 <div class="section-content">
@@ -186,6 +178,21 @@
                     <div class="action-buttons">
                         <button id="donateSubmitBtn" class="btn btn-primary">🎉 Submit Donation</button>
                         <button id="donateCommentBackBtn" class="btn btn-secondary">Back</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Success -->
+            <div id="donateSuccess" class="action-section">
+                <div class="section-content">
+                    <div class="success-message">
+                        <h3>🎉 Donation Successful!</h3>
+                        <p>Thank you for your generous donation!</p>
+                        <p>Your contribution helps feed our community.</p>
+                    </div>
+                    <div class="action-buttons">
+                        <button id="donateBackToMapBtn" class="btn btn-primary">Back to Map</button>
+                        <button onclick="setActiveTab('donate')" class="btn btn-secondary">Donate Again</button>
                     </div>
                 </div>
             </div>
@@ -207,7 +214,7 @@
                     <p>Point your camera at the QR code on the pātaka</p>
                     <video id="takeQRVideo" class="qr-video" playsinline></video>
                     <div class="action-buttons">
-                        <button id="takeUnableToScanBtn" class="btn btn-secondary">Unable to scan?</button>
+                        <button id="takeUnableToScanBtn" class="btn btn-secondary">Unable to scan QR code?</button>
                         <button id="cancelTakeBtn" class="btn btn-secondary">Cancel</button>
                     </div>
                 </div>
@@ -216,10 +223,10 @@
             <!-- Step 1b: Manual Selection -->
             <div id="takeSection1b" class="action-section">
                 <div class="step-indicator">
-                    <div id="takeStep1b" class="step active">1</div>
-                    <div id="takeStep2b" class="step">2</div>
-                    <div id="takeStep3b" class="step">3</div>
-                    <div id="takeStep4b" class="step">4</div>
+                    <div class="step active">1</div>
+                    <div class="step">2</div>
+                    <div class="step">3</div>
+                    <div class="step">4</div>
                 </div>
                 
                 <div class="section-content">
@@ -227,7 +234,7 @@
                     <p>Choose the pātaka you're taking from</p>
                     <div class="form-group">
                         <select id="takePatakaSelect" class="form-select">
-                            <option value="">Select a pātaka...</option>
+                            <option value="">Choose a pataka...</option>
                         </select>
                     </div>
                     <div class="action-buttons">
@@ -236,13 +243,13 @@
                 </div>
             </div>
 
-            <!-- Step 2: Photo -->
+            <!-- Additional take sections similar to donate... -->
             <div id="takeSection2" class="action-section">
                 <div class="step-indicator">
-                    <div id="takeStep1" class="step completed">1</div>
-                    <div id="takeStep2" class="step active">2</div>
-                    <div id="takeStep3" class="step">3</div>
-                    <div id="takeStep4" class="step">4</div>
+                    <div class="step completed">1</div>
+                    <div class="step active">2</div>
+                    <div class="step">3</div>
+                    <div class="step">4</div>
                 </div>
                 
                 <div class="section-content">
@@ -269,13 +276,12 @@
                 </div>
             </div>
 
-            <!-- Step 3: Item Selection -->
             <div id="takeSection3" class="action-section">
                 <div class="step-indicator">
-                    <div id="takeStep1" class="step completed">1</div>
-                    <div id="takeStep2" class="step completed">2</div>
-                    <div id="takeStep3" class="step active">3</div>
-                    <div id="takeStep4" class="step">4</div>
+                    <div class="step completed">1</div>
+                    <div class="step completed">2</div>
+                    <div class="step active">3</div>
+                    <div class="step">4</div>
                 </div>
                 
                 <div class="section-content">
@@ -304,13 +310,12 @@
                 </div>
             </div>
 
-            <!-- Step 4: Comment -->
             <div id="takeSection4" class="action-section">
                 <div class="step-indicator">
-                    <div id="takeStep1" class="step completed">1</div>
-                    <div id="takeStep2" class="step completed">2</div>
-                    <div id="takeStep3" class="step completed">3</div>
-                    <div id="takeStep4" class="step active">4</div>
+                    <div class="step completed">1</div>
+                    <div class="step completed">2</div>
+                    <div class="step completed">3</div>
+                    <div class="step active">4</div>
                 </div>
                 
                 <div class="section-content">
@@ -346,10 +351,10 @@
                 
                 <div class="section-content">
                     <h2>📱 Scan Pātaka QR Code</h2>
-                    <p>Point your camera at the QR code on the pātaka</p>
+                    <p>Point your camera at the QR code on the pātaka you want to report about</p>
                     <video id="reportQRVideo" class="qr-video" playsinline></video>
                     <div class="action-buttons">
-                        <button id="reportUnableToScanBtn" class="btn btn-secondary">Unable to scan?</button>
+                        <button id="reportUnableToScanBtn" class="btn btn-secondary">Unable to scan QR code?</button>
                         <button id="cancelReportBtn" class="btn btn-secondary">Cancel</button>
                     </div>
                 </div>
@@ -358,20 +363,21 @@
             <!-- Step 1b: Manual Selection -->
             <div id="reportSection1b" class="action-section">
                 <div class="step-indicator">
-                    <div id="step1b" class="step active">1</div>
-                    <div id="step2b" class="step">2</div>
-                    <div id="step3b" class="step">3</div>
+                    <div class="step active">1</div>
+                    <div class="step">2</div>
+                    <div class="step">3</div>
                 </div>
                 
                 <div class="section-content">
                     <h2>📍 Select Pātaka</h2>
-                    <p>Choose the pātaka you're reporting about</p>
+                    <p>Choose the pātaka you want to report about</p>
                     <div class="form-group">
                         <select id="reportPatakaSelect" class="form-select">
-                            <option value="">Select a pātaka...</option>
+                            <option value="">Choose a pataka...</option>
                         </select>
                     </div>
                     <div class="action-buttons">
+                        <button onclick="handleManualPatakaSelection('reportPatakaSelect', 'report')" class="btn btn-primary">Continue</button>
                         <button id="backToReportQRBtn" class="btn btn-secondary">Back to QR Scan</button>
                     </div>
                 </div>
@@ -380,9 +386,9 @@
             <!-- Step 2: Report Details -->
             <div id="reportSection2" class="action-section">
                 <div class="step-indicator">
-                    <div id="step1" class="step completed">1</div>
-                    <div id="step2" class="step active">2</div>
-                    <div id="step3" class="step">3</div>
+                    <div class="step completed">1</div>
+                    <div class="step active">2</div>
+                    <div class="step">3</div>
                 </div>
                 
                 <div class="section-content">
@@ -427,9 +433,9 @@
             <!-- Step 3: Contact Details -->
             <div id="reportSection3" class="action-section">
                 <div class="step-indicator">
-                    <div id="step1" class="step completed">1</div>
-                    <div id="step2" class="step completed">2</div>
-                    <div id="step3" class="step active">3</div>
+                    <div class="step completed">1</div>
+                    <div class="step completed">2</div>
+                    <div class="step active">3</div>
                 </div>
                 
                 <div class="section-content">
@@ -463,6 +469,29 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Success -->
+            <div id="reportSuccess" class="action-section">
+                <div class="section-content">
+                    <div class="success-message">
+                        <h3>✅ Report Submitted!</h3>
+                        <p>Thank you for reporting the issue!</p>
+                        <p>The kaitiaki has been notified and will address the issue as soon as possible.</p>
+                    </div>
+                    <div class="action-buttons">
+                        <button id="reportBackToMapBtn" class="btn btn-primary">Back to Map</button>
+                        <button onclick="setActiveTab('report')" class="btn btn-secondary">Report Another Issue</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Navigation - BOTTOM POSITIONED -->
+        <div class="tab-nav">
+            <button class="tab-btn active" data-tab="find">🔍 Find</button>
+            <button class="tab-btn" data-tab="donate">📤 Donate</button>
+            <button class="tab-btn" data-tab="take">📥 Take</button>
+            <button class="tab-btn" data-tab="report">⚠️ Report</button>
         </div>
     </div>
 
