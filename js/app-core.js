@@ -9,7 +9,7 @@ let actionData = {};
 let map = null;
 
 // API Configuration
-const API_BASE_URL = 'https://oth-pataka-api.azurewebsites.net/api';
+const API_BASE_URL = 'oth-pataka-api-facpcna9c9hjc5dh.australiaeast-01.azurewebsites.net';
 
 /* ========================================
    INITIALIZATION
