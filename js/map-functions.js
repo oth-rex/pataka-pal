@@ -72,11 +72,10 @@ function loadPatakasOnMap() {
 
 function addPatakaMarker(pataka) {
     try {
-        const marker = L.marker([pataka.latitude, pataka.longitude], {
-            icon: window.patakaIcon
-        }).addTo(map);
+        // Use default Leaflet marker (blue pin)
+        const marker = L.marker([pataka.latitude, pataka.longitude]).addTo(map);
         
-        // Create popup content
+        // Create popup content with View Details button
         const inventoryText = pataka.inventory && pataka.inventory.length > 0 
             ? pataka.inventory.map(item => `• ${item.Name}: ${item.Quantity}`).join('<br>')
             : 'No items currently listed';
@@ -85,45 +84,49 @@ function addPatakaMarker(pataka) {
         
         const popupContent = `
             <div style="max-width: 250px;">
-                <h3 style="color: #289DA7; margin-bottom: 10px; font-size: 1.1rem; line-height: 1.3;">
+                <h3 style="color: #289DA7; margin-bottom: 10px; font-size: 1.1rem;">
                     ${pataka.name}
                 </h3>
                 <p style="margin-bottom: 8px; color: #666; font-size: 0.9rem;">
                     📍 ${pataka.address}
                 </p>
                 <div style="margin-bottom: 10px;">
-                    <strong style="color: #333;">Current Inventory:</strong><br>
-                    <span style="font-size: 0.85rem; line-height: 1.4;">
-                        ${inventoryText}
-                    </span>
+                    <strong>Current Inventory:</strong><br>
+                    <span style="font-size: 0.85rem;">${inventoryText}</span>
                 </div>
-                <div style="text-align: center;">
-                    <span class="cupboard-status ${statusClass}" style="
-                        display: inline-block;
-                        padding: 4px 8px;
-                        border-radius: 15px;
-                        font-size: 0.8rem;
-                        font-weight: 600;
-                        ${statusClass === 'status-available' ? 'background: #e8f5e9; color: #2e7d32;' : 'background: #ffebee; color: #c62828;'}
-                    ">
+                <div style="text-align: center; margin-top: 10px;">
+                    <span style="display: inline-block; padding: 4px 8px; border-radius: 15px; font-size: 0.8rem; font-weight: 600; ${statusClass === 'status-available' ? 'background: #e8f5e9; color: #2e7d32;' : 'background: #ffebee; color: #c62828;'}">
                         ${pataka.status}
                     </span>
+                    <br><br>
+                    <button onclick="viewPatakaDetails(${pataka.id})" style="background: #289DA7; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer;">
+                        View Details
+                    </button>
                 </div>
             </div>
         `;
         
         marker.bindPopup(popupContent);
-        
-        // Add click handler for marker
-        marker.on('click', function() {
-            console.log('Pātaka marker clicked:', pataka.name);
-        });
-        
         mapMarkers.push(marker);
         
     } catch (error) {
         console.error('❌ Error adding marker for pātaka:', pataka.name, error);
     }
+}
+
+// Add this function to handle the View Details button
+function viewPatakaDetails(patakaId) {
+    switchToList();
+    // Highlight the specific pataka in list view
+    setTimeout(() => {
+        const cards = document.querySelectorAll('.cupboard-card');
+        cards.forEach(card => {
+            if (card.onclick && card.onclick.toString().includes(patakaId)) {
+                card.style.backgroundColor = '#fff3cd';
+                card.scrollIntoView({ behavior: 'smooth' });
+            }
+        });
+    }, 100);
 }
 
 function clearMapMarkers() {
