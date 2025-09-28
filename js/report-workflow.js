@@ -1,220 +1,36 @@
-/* ========================================
-   REPORT WORKFLOW MODULE
-   ======================================== */
-
-let reportData = {
-    pataka: null,
-    description: '',
-    photo: null,
-    reporterName: '',
-    reporterEmail: '',
-    okToContact: false
-};
-
-/* ========================================
-   REPORT EVENT LISTENERS SETUP
-   ======================================== */
-
-function setupReportEventListeners() {
-    // QR Scanner events
-    document.getElementById('reportUnableToScanBtn')?.addEventListener('click', async () => {
-        await stopQRScanner();
-        await populatePatakaDropdown('reportPatakaSelect');
-        document.getElementById('reportSection1').classList.remove('active');
-        document.getElementById('reportSection1b')?.classList.add('active');
-    });
-
-    document.getElementById('cancelReportBtn')?.addEventListener('click', async () => {
-        await stopQRScanner();
-        setActiveTab('find');
-        switchToMap();
-    });
-
-    // Manual selection
-    document.getElementById('reportPatakaSelect')?.addEventListener('change', (e) => {
-        if (e.target.value) {
-            handleManualPatakaSelection('reportPatakaSelect', 'report');
-        }
-    });
-
-    document.getElementById('backToReportQRBtn')?.addEventListener('click', () => {
-        document.getElementById('reportSection1b').classList.remove('active');
-        document.getElementById('reportSection1').classList.add('active');
-        startQRScanner('reportQRVideo', 'report');
-    });
-
-    // Report details step events
-    document.getElementById('reportNextBtn')?.addEventListener('click', () => {
-        if (validateReportDetails()) {
-            proceedToReportContact();
-        }
-    });
-
-    document.getElementById('reportBackBtn')?.addEventListener('click', () => {
-        document.getElementById('reportSection2').classList.remove('active');
-        document.getElementById('reportSection1').classList.add('active');
-        
-        document.getElementById('step2').classList.remove('active');
-        document.getElementById('step1').classList.add('active');
-        document.getElementById('step1').classList.remove('completed');
-    });
-
-    // Contact details step events
-    document.getElementById('reportSubmitBtn')?.addEventListener('click', async () => {
-        await submitReport();
-    });
-
-    document.getElementById('reportContactBackBtn')?.addEventListener('click', () => {
-        document.getElementById('reportSection3').classList.remove('active');
-        document.getElementById('reportSection2').classList.add('active');
-        
-        document.getElementById('step3').classList.remove('active');
-        document.getElementById('step2').classList.add('active');
-        document.getElementById('step2').classList.remove('completed');
-    });
-
-    // Success screen
-    document.getElementById('reportBackToMapBtn')?.addEventListener('click', () => {
-        setActiveTab('find');
-        switchToMap();
-    });
-
-    // Initialize QR scanner when report tab becomes active
-    const reportTab = document.querySelector('[data-tab="report"]');
-    reportTab?.addEventListener('click', () => {
-        setTimeout(() => {
-            startQRScanner('reportQRVideo', 'report');
-        }, 300);
-    });
-
-    // Issue type selection
-    document.querySelectorAll('input[name="issueType"]').forEach(radio => {
-        radio.addEventListener('change', handleIssueTypeChange);
-    });
-
-    // Photo upload for evidence
-    document.getElementById('reportPhotoInput')?.addEventListener('change', (e) => {
-        handleReportPhotoSelection(e);
-    });
-
-    document.getElementById('reportTakePhotoBtn')?.addEventListener('click', () => {
-        document.getElementById('reportPhotoInput')?.click();
-    });
+// Flow reset functions
+function resetReportFlow() {
+    document.querySelectorAll('#reportView .action-section').forEach(section => section.classList.remove('active'));
+    document.getElementById('reportStep1').classList.add('active');
+    
+    document.querySelectorAll('#reportView .step').forEach(step => step.classList.remove('active', 'completed'));
+    document.getElementById('step1').classList.add('active');
+    
+    selectedPataka = null;
+    actionData = {};
 }
 
-/* ========================================
-   WORKFLOW NAVIGATION
-   ======================================== */
-
-function proceedToReportContact() {
-    // Capture report details
-    reportData.description = document.getElementById('reportDescription')?.value.trim() || '';
+// Navigation functions
+function proceedToReportDetails() {
+    document.getElementById('selectedPatakaName').textContent = selectedPataka.name;
     
-    document.getElementById('reportSection2').classList.remove('active');
-    document.getElementById('reportSection3')?.classList.add('active');
+    document.getElementById('reportStep1').classList.remove('active');
+    document.getElementById('reportStep1b').classList.remove('active');
+    document.getElementById('reportStep2').classList.add('active');
     
-    document.getElementById('step2').classList.remove('active');
-    document.getElementById('step2').classList.add('completed');
-    document.getElementById('step3')?.classList.add('active');
-    
-    // Update summary
-    updateReportSummary();
+    document.getElementById('step1').classList.remove('active');
+    document.getElementById('step1').classList.add('completed');
+    document.getElementById('step2').classList.add('active');
 }
 
-function updateReportSummary() {
-    const summaryContainer = document.getElementById('reportSummary');
-    if (!summaryContainer) return;
-    
-    const issueType = document.querySelector('input[name="issueType"]:checked')?.value || 'Not specified';
-    const description = reportData.description || 'No description provided';
-    const hasPhoto = reportData.photo ? 'Yes' : 'No';
-    
-    summaryContainer.innerHTML = `
-        <div class="report-summary">
-            <h4>Report Summary</h4>
-            <p><strong>Pātaka:</strong> ${selectedPataka?.name}</p>
-            <p><strong>Issue Type:</strong> ${issueType}</p>
-            <p><strong>Description:</strong> ${description}</p>
-            <p><strong>Photo Evidence:</strong> ${hasPhoto}</p>
-        </div>
-    `;
+function showReportSuccess() {
+    document.getElementById('reportStep3').classList.remove('active');
+    document.getElementById('reportSuccess').classList.add('active');
+    document.getElementById('step3').classList.remove('active');
+    document.getElementById('step3').classList.add('completed');
 }
 
-/* ========================================
-   VALIDATION
-   ======================================== */
-
-function validateReportDetails() {
-    const issueType = document.querySelector('input[name="issueType"]:checked');
-    const description = document.getElementById('reportDescription')?.value.trim();
-    
-    if (!issueType) {
-        showCustomModal('Validation Error', 'Please select an issue type');
-        return false;
-    }
-    
-    if (!description && !reportData.photo) {
-        showCustomModal('Validation Error', 'Please provide either a description or photo evidence');
-        return false;
-    }
-    
-    return true;
-}
-
-function validateContactDetails() {
-    const reporterEmail = document.getElementById('reporterEmail')?.value.trim();
-    
-    // Email is optional, but if provided, should be valid
-    if (reporterEmail && !isValidEmail(reporterEmail)) {
-        showCustomModal('Validation Error', 'Please enter a valid email address');
-        return false;
-    }
-    
-    return true;
-}
-
-function isValidEmail(email) {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-}
-
-/* ========================================
-   ISSUE TYPE HANDLING
-   ======================================== */
-
-function handleIssueTypeChange(e) {
-    const issueType = e.target.value;
-    const customDescriptionContainer = document.getElementById('customDescriptionContainer');
-    
-    // Show/hide custom description based on issue type
-    if (issueType === 'other') {
-        customDescriptionContainer?.classList.remove('hidden');
-    } else {
-        customDescriptionContainer?.classList.add('hidden');
-    }
-    
-    // Pre-fill description based on issue type
-    const descriptionTextarea = document.getElementById('reportDescription');
-    if (descriptionTextarea && issueType !== 'other') {
-        const descriptions = {
-            'damaged': 'The pātaka appears to be damaged and needs repair.',
-            'empty': 'The pātaka has been empty for an extended period.',
-            'full': 'The pātaka is overfull and items may be spoiling.',
-            'maintenance': 'The pātaka requires general maintenance or cleaning.',
-            'vandalism': 'The pātaka has been vandalized or tampered with.',
-            'access': 'There are issues accessing the pātaka (locked, blocked, etc.).'
-        };
-        
-        if (descriptions[issueType]) {
-            descriptionTextarea.value = descriptions[issueType];
-        }
-    }
-}
-
-/* ========================================
-   PHOTO HANDLING
-   ======================================== */
-
+// Report-specific photo handling
 function handleReportPhotoSelection(e) {
     const file = e.target.files[0];
     if (file) {
@@ -230,198 +46,193 @@ function handleReportPhotoSelection(e) {
         
         const reader = new FileReader();
         reader.onload = function(e) {
-            const preview = document.getElementById('reportPhotoPreview');
-            const container = document.getElementById('reportPhotoPreviewContainer');
-            if (preview && container) {
-                preview.src = e.target.result;
-                container.classList.remove('hidden');
-            }
+            const preview = document.getElementById('photoPreview');
+            const container = document.getElementById('photoPreviewContainer');
+            preview.src = e.target.result;
+            container.classList.remove('hidden');
         };
         reader.readAsDataURL(file);
         
-        reportData.photo = file;
-        console.log('📷 Report photo selected:', file.name);
+        actionData.photo = file;
     }
 }
 
-/* ========================================
-   REPORT SUBMISSION
-   ======================================== */
-
-async function submitReport() {
-    try {
-        // Validate all data
-        if (!selectedPataka) {
-            showCustomModal('Error', 'No pātaka selected');
-            return;
-        }
-        
-        if (!validateContactDetails()) {
-            return;
-        }
-        
-        // Collect all form data
-        const issueType = document.querySelector('input[name="issueType"]:checked')?.value;
-        const description = document.getElementById('reportDescription')?.value.trim();
-        const reporterName = document.getElementById('reporterName')?.value.trim();
-        const reporterEmail = document.getElementById('reporterEmail')?.value.trim();
-        const okToContact = document.getElementById('okToContact')?.checked || false;
-        
-        // Show loading state
-        const submitBtn = document.getElementById('reportSubmitBtn');
-        const originalText = submitBtn.textContent;
-        submitBtn.textContent = 'Submitting...';
-        submitBtn.disabled = true;
-        
-        // Prepare submission data
-        const submissionData = {
-            patakaId: selectedPataka.id,
-            issueType: issueType,
-            description: description,
-            reporterName: reporterName,
-            reporterEmail: reporterEmail,
-            okToContact: okToContact,
-            photo: reportData.photo,
-            timestamp: new Date().toISOString()
-        };
-        
-        console.log('⚠️ Submitting report:', submissionData);
-        
-        // Call the existing ReportIssue API
-        await submitReportToAPI(submissionData);
-        
-        // Show success
-        showReportSuccess();
-        
-        submitBtn.textContent = originalText;
-        submitBtn.disabled = false;
-        
-    } catch (error) {
-        console.error('❌ Error submitting report:', error);
-        showCustomModal('Submission Error', 'Failed to submit report. Please try again.');
-        
-        const submitBtn = document.getElementById('reportSubmitBtn');
-        submitBtn.textContent = 'Submit Report';
-        submitBtn.disabled = false;
-    }
-}
-
-async function submitReportToAPI(data) {
-    try {
-        // Use the existing ReportIssue API endpoint
-        const formData = new FormData();
-        formData.append('patakaId', data.patakaId);
-        formData.append('description', data.description);
-        
-        if (data.reporterName) {
-            formData.append('reporterName', data.reporterName);
-        }
-        
-        if (data.reporterEmail) {
-            formData.append('reporterEmail', data.reporterEmail);
-        }
-        
-        if (data.okToContact) {
-            formData.append('okToContact', 'true');
-        }
-        
-        if (data.photo) {
-            formData.append('photo', data.photo);
-        }
-        
-        const response = await fetch(`${API_BASE_URL}/ReportIssue`, {
-            method: 'POST',
-            body: formData
-        });
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
-        }
-        
-        const result = await response.json();
-        console.log('✅ Report submitted successfully:', result);
-        
-        return result;
-        
-    } catch (error) {
-        console.error('❌ API call failed:', error);
-        throw error;
-    }
-}
-
-function showReportSuccess() {
-    // Hide current section
-    document.getElementById('reportSection3').classList.remove('active');
-    
-    // Show success section
-    const successSection = document.getElementById('reportSection4');
-    if (successSection) {
-        successSection.classList.add('active');
-    } else {
-        // Create success section if it doesn't exist
-        const reportView = document.getElementById('reportView');
-        const successHTML = `
-            <div id="reportSection4" class="action-section active">
-                <div class="section-content">
-                    <div class="success-message">
-                        <h3>✅ Report Submitted!</h3>
-                        <p>Thank you for reporting the issue at ${selectedPataka?.name}!</p>
-                        <p>The kaitiaki has been notified and will address the issue as soon as possible.</p>
-                        ${reportData.reporterEmail ? '<p>You will receive updates if you provided your email.</p>' : ''}
-                    </div>
-                    <div class="action-buttons">
-                        <button id="reportBackToMapBtn" class="btn btn-primary">Back to Map</button>
-                        <button onclick="setActiveTab('report')" class="btn btn-secondary">Report Another Issue</button>
-                    </div>
-                </div>
-            </div>
-        `;
-        reportView.insertAdjacentHTML('beforeend', successHTML);
-        
-        // Add event listener for back button
-        document.getElementById('reportBackToMapBtn').addEventListener('click', () => {
-            setActiveTab('find');
-            switchToMap();
-        });
-    }
-    
-    // Update step indicator
-    document.getElementById('step3')?.classList.add('completed');
-    
-    // Reset report data
-    resetReportData();
-}
-
-function resetReportData() {
-    reportData = {
-        pataka: null,
-        description: '',
-        photo: null,
-        reporterName: '',
-        reporterEmail: '',
-        okToContact: false
-    };
-    
-    // Clear form inputs
-    document.getElementById('reportDescription').value = '';
-    document.getElementById('reporterName').value = '';
-    document.getElementById('reporterEmail').value = '';
-    document.getElementById('okToContact').checked = false;
-    
-    // Clear radio selections
-    document.querySelectorAll('input[name="issueType"]').forEach(radio => {
-        radio.checked = false;
+function setupReportEventListeners() {
+    document.getElementById('unableToScanBtn').addEventListener('click', async () => {
+        await stopQRScanner();
+        await populatePatakaDropdown('patakaSelect');
+        document.getElementById('reportStep1').classList.remove('active');
+        document.getElementById('reportStep1b').classList.add('active');
     });
-    
-    // Clear photo preview
-    const preview = document.getElementById('reportPhotoPreview');
-    const container = document.getElementById('reportPhotoPreviewContainer');
-    if (preview && container) {
-        preview.src = '';
-        container.classList.add('hidden');
-    }
-    
-    // Hide custom description container
-    document.getElementById('customDescriptionContainer')?.classList.add('hidden');
+
+    document.getElementById('cancelReportBtn').addEventListener('click', async () => {
+        await stopQRScanner();
+        setActiveTab('find');
+        switchToMap();
+    });
+
+    document.getElementById('backToScanBtn').addEventListener('click', () => {
+        document.getElementById('reportStep1b').classList.remove('active');
+        document.getElementById('reportStep1').classList.add('active');
+        startQRScanner('qr-scanner', 'report');
+    });
+
+    document.getElementById('patakaSelect').addEventListener('change', (e) => {
+        const cupboardId = parseInt(e.target.value);
+        const confirmBtn = document.getElementById('confirmPatakaBtn');
+        
+        if (cupboardId) {
+            selectedPataka = cupboards.find(p => p.id === cupboardId);
+            confirmBtn.disabled = false;
+        } else {
+            selectedPataka = null;
+            confirmBtn.disabled = true;
+        }
+    });
+
+    document.getElementById('confirmPatakaBtn').addEventListener('click', () => {
+        proceedToReportDetails();
+    });
+
+    // Report photo handlers
+    document.getElementById('takePhotoBtn').addEventListener('click', () => {
+        document.getElementById('takePhotoInput').click();
+    });
+
+    document.getElementById('selectPhotoBtn').addEventListener('click', () => {
+        document.getElementById('selectPhotoInput').click();
+    });
+
+    document.getElementById('takePhotoInput').addEventListener('change', handleReportPhotoSelection);
+    document.getElementById('selectPhotoInput').addEventListener('change', handleReportPhotoSelection);
+
+    document.getElementById('continueToContactBtn').addEventListener('click', () => {
+        const description = document.getElementById('issueDescription').value.trim();
+        const hasPhoto = actionData.photo;
+        
+        if (!description && !hasPhoto) {
+            document.getElementById('reportValidation').classList.remove('hidden');
+            return;
+        }
+        
+        document.getElementById('reportValidation').classList.add('hidden');
+        actionData.description = description;
+        
+        document.getElementById('reportStep2').classList.remove('active');
+        document.getElementById('reportStep3').classList.add('active');
+        
+        document.getElementById('step2').classList.remove('active');
+        document.getElementById('step2').classList.add('completed');
+        document.getElementById('step3').classList.add('active');
+    });
+
+    document.getElementById('backToSelectionBtn').addEventListener('click', () => {
+        document.getElementById('reportStep2').classList.remove('active');
+        document.getElementById('reportStep1').classList.add('active');
+        
+        document.getElementById('step2').classList.remove('active');
+        document.getElementById('step1').classList.add('active');
+        document.getElementById('step1').classList.remove('completed');
+        
+        startQRScanner('qr-scanner', 'report');
+    });
+
+    document.getElementById('backToDetailsBtn').addEventListener('click', () => {
+        document.getElementById('reportStep3').classList.remove('active');
+        document.getElementById('reportStep2').classList.add('active');
+        
+        document.getElementById('step3').classList.remove('active');
+        document.getElementById('step2').classList.add('active');
+        document.getElementById('step2').classList.remove('completed');
+    });
+
+    document.getElementById('backToMapBtn').addEventListener('click', () => {
+        setActiveTab('find');
+        switchToMap();
+    });
 }
+
+// Report Issue Submission Integration (from v27)
+async function submitReportIssueFromApp() {
+    try {
+        // Require selectedPataka from app state
+        if (typeof selectedPataka !== 'object' || !selectedPataka || !selectedPataka.id) {
+            throw new Error('No pataka selected. Please pick a pätaka first.');
+        }
+        const patakaId = Number(selectedPataka.id);
+
+        // Grab fields
+        const descEl = document.getElementById('issueDescription');
+        const nameEl = document.getElementById('contactName');
+        const contactEl = document.getElementById('contactInfo');
+        const takeEl = document.getElementById('takePhotoInput');
+        const selectEl = document.getElementById('selectPhotoInput');
+
+        const description  = descEl ? (descEl.value || '').trim() : '';
+        const reporterName = nameEl ? (nameEl.value || '').trim() : '';
+        const reporterEmail = ''; // your UI uses a freeform contact field
+        const okToContact  = contactEl && contactEl.value && contactEl.value.trim().length > 0;
+        const photoFile    = (takeEl && takeEl.files && takeEl.files[0]) ? takeEl.files[0]
+                            : (selectEl && selectEl.files && selectEl.files[0]) ? selectEl.files[0]
+                            : null;
+
+        if (!description && !photoFile) {
+            const v = document.getElementById('reportValidation');
+            if (v) { v.classList.remove('hidden'); }
+            throw new Error('Please provide either a description or a photo.');
+        }
+
+        const fd = new FormData();
+        fd.append('patakaId', patakaId);
+        if (description)   fd.append('description', description);
+        if (reporterName)  fd.append('reporterName', reporterName);
+        if (reporterEmail) fd.append('reporterEmail', reporterEmail);
+        fd.append('okToContact', okToContact ? 'true' : 'false');
+        if (photoFile)     fd.append('photo', photoFile);
+
+        const res = await fetch(API_BASE_URL + '/ReportIssue', { 
+            method: 'POST', 
+            body: fd,
+            timeout: 60000 // 60 second timeout for upload
+        });
+        
+        if (!res.ok) {
+            const text = await res.text().catch(()=>''); 
+            throw new Error(text || ('HTTP ' + res.status));
+        }
+        
+        const json = await res.json();
+        
+        // Success - show the success screen
+        showReportSuccess();
+        return json;
+    } catch (err) {
+        console.error('Report submit failed:', err);
+        // Show your existing modal if available
+        if (typeof showCustomModal === 'function') {
+            showCustomModal('Report failed', (err && err.message) ? err.message : String(err));
+        } else {
+            alert((err && err.message) ? err.message : String(err));
+        }
+        throw err;
+    }
+}
+
+// Initialize report submission when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    const btn = document.getElementById('submitReportBtn');
+    if (btn) {
+        btn.addEventListener('click', async function(ev) {
+            ev.preventDefault();
+            btn.disabled = true;
+            const original = btn.textContent;
+            btn.textContent = 'Submitting…';
+            try { 
+                await submitReportIssueFromApp(); 
+            } finally { 
+                btn.disabled = false; 
+                btn.textContent = original; 
+            }
+        });
+    }
+});
