@@ -36,7 +36,10 @@ export function dataURLToImage(dataURL) {
  * quality is 0..1 (only used for JPEG/WebP).
  * Returns a Blob.
  */
-export async function resizeDataURL(dataURL, { maxW = 1600, maxH = 1600, quality = 0.85, type = "image/jpeg" } = {}) {
+export async function resizeDataURL(
+  dataURL,
+  { maxW = 1600, maxH = 1600, quality = 0.85, type = "image/jpeg" } = {}
+) {
   const img = await dataURLToImage(dataURL);
   let { width, height } = img;
 
@@ -58,7 +61,10 @@ export async function resizeDataURL(dataURL, { maxW = 1600, maxH = 1600, quality
  * Accepts: { maxBytes, acceptTypes: ['image/jpeg','image/png',... ] }
  * Returns { file, error }.
  */
-export function pickFirstFile(inputEl, { maxBytes = 8_000_000, acceptTypes = null } = {}) {
+export function pickFirstFile(
+  inputEl,
+  { maxBytes = 8_000_000, acceptTypes = null } = {}
+) {
   const files = inputEl?.files;
   if (!files || !files.length) return { file: null, error: "No file selected." };
   const file = files[0];
@@ -66,7 +72,10 @@ export function pickFirstFile(inputEl, { maxBytes = 8_000_000, acceptTypes = nul
     return { file: null, error: `Unsupported file type: ${file.type}` };
   }
   if (file.size > maxBytes) {
-    return { file: null, error: `File is too large (${Math.round(file.size/1024/1024)}MB).` };
+    return {
+      file: null,
+      error: `File is too large (${Math.round(file.size / 1024 / 1024)}MB).`,
+    };
   }
   return { file, error: null };
 }

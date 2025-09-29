@@ -10,6 +10,29 @@ function resetReportFlow() {
     actionData = {};
 }
 
+function __robustTriggerFileInput(inputEl) {
+      if (inputEl) {
+        const _prevDisplay = inputEl.style.display;
+        const _prevVis = inputEl.style.visibility;
+        const _prevPos = inputEl.style.position;
+        const _prevW = inputEl.style.width;
+        const _prevH = inputEl.style.height;
+        inputEl.style.position = 'absolute';
+        inputEl.style.visibility = 'hidden';
+        inputEl.style.width = '1px';
+        inputEl.style.height = '1px';
+        inputEl.style.display = 'block';
+        inputEl.click();
+        setTimeout(() => {
+          inputEl.style.display = _prevDisplay;
+          inputEl.style.visibility = _prevVis;
+          inputEl.style.position = _prevPos;
+          inputEl.style.width = _prevW;
+          inputEl.style.height = _prevH;
+        }, 0);
+      }
+    }
+
 // Navigation functions
 function proceedToReportDetails() {
     document.getElementById('selectedPatakaName').textContent = selectedPataka.name;
@@ -95,13 +118,9 @@ function setupReportEventListeners() {
     });
 
     // Report photo handlers
-    document.getElementById('takePhotoBtn').addEventListener('click', () => {
-        document.getElementById('takePhotoInput').click();
-    });
+    document.getElementById('takePhotoBtn')?.addEventListener('click', () => { const el = document.getElementById('takePhotoInput'); __robustTriggerFileInput(el); });
 
-    document.getElementById('selectPhotoBtn').addEventListener('click', () => {
-        document.getElementById('selectPhotoInput').click();
-    });
+    document.getElementById('selectPhotoBtn')?.addEventListener('click', () => { const el = document.getElementById('selectPhotoInput'); __robustTriggerFileInput(el); });
 
     document.getElementById('takePhotoInput').addEventListener('change', handleReportPhotoSelection);
     document.getElementById('selectPhotoInput').addEventListener('change', handleReportPhotoSelection);
