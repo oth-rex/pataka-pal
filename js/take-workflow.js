@@ -105,3 +105,76 @@ function setupTakeEventListeners() {
         switchToMap();
     });
 }
+
+/** Option B encapsulation for Take flow **/
+(function(){
+  // Expose on window for app-core.js
+  window.setupTakeEventListeners = function setupTakeEventListeners() {
+    const root = document.querySelector('#takeView') || document;
+    const takeBtn = root.querySelector('#takeTakePhotoBtn, [data-action="take-take-photo"]');
+    const fileBtn = root.querySelector('#takeSelectPhotoBtn, [data-action="take-select-photo"]');
+    const fileInput = root.querySelector('#takePhotoInput, input[data-role="take-photo-input"]');
+    const previewImg = root.querySelector('#takeImagePreview, img[data-role="take-image-preview"]');
+
+    if (!fileInput) {
+      console.warn('[take] photo input not found');
+    }
+
+    if (takeBtn && takeBtn._takeBound !== true) {
+      takeBtn.addEventListener('click', () => {
+        if (fileInput) fileInput.click();
+      });
+      takeBtn._takeBound = true;
+    }
+
+    if (fileBtn && fileBtn._takeBound !== true) {
+      fileBtn.addEventListener('click', () => {
+        if (fileInput) fileInput.click();
+      });
+      fileBtn._takeBound = true;
+    }
+
+    if (fileInput && fileInput._takeBound !== true) {
+      fileInput.addEventListener('change', async () => {
+        try {
+          const utils = await import('./photo-utils.js');
+          const { file, error } = utils.pickFirstFile(fileInput, { maxBytes: 8_000_000, acceptTypes: ['image/jpeg','image/png','image/webp'] });
+          if (error) {
+            console.warn('[take] ' + error);
+            return;
+          }
+          const dataURL = await utils.fileToDataURL(file);
+          const blob = await utils.resizeDataURL(dataURL, { maxW: 1600, maxH: 1600, quality: 0.85, type: 'image/jpeg' });
+          const previewURL = await utils.blobToDataURL(blob);
+
+          if (previewImg) {
+            previewImg.src = previewURL;
+            previewImg.dataset.hasImage = "1";
+          }
+          window.__takePhotoBlob = blob;
+        } catch (e) {
+          console.error('[take] file handling failed', e);
+        }
+      });
+      fileInput._takeBound = true;
+    }
+
+    const submitBtn = root.querySelector('#takeSubmitBtn, [data-action="take-submit"]');
+    if (submitBtn && submitBtn._takeBound !== true) {
+      submitBtn.addEventListener('click', async (e) => {
+        try {
+          e.preventDefault();
+          const photoBlob = window.__takePhotoBlob || null;
+          if (typeof window.proceedToTakePhoto === 'function') {
+            await window.proceedToTakePhoto(photoBlob);
+          } else {
+            console.warn('[take] proceedToTakePhoto not found; skipped.');
+          }
+        } catch (err) {
+          console.error('[take] submit failed', err);
+        }
+      });
+      submitBtn._takeBound = true;
+    }
+  };
+})();

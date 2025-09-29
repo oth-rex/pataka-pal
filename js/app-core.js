@@ -177,6 +177,9 @@ function hideAllViews() {
 
 // Setup event listeners
 function setupEventListeners() {
+        try { if (window.setupDonateEventListeners) window.setupDonateEventListeners(); } catch(e) { console.warn('Donate listeners not set:', e); }
+        try { if (window.setupTakeEventListeners) window.setupTakeEventListeners(); } catch(e) { console.warn('Take listeners not set:', e); }
+
     // Modal
     document.getElementById('modalCloseBtn').addEventListener('click', hideCustomModal);
     document.getElementById('customModal').addEventListener('click', (e) => {
@@ -191,8 +194,6 @@ function setupEventListeners() {
     document.getElementById('searchInput').addEventListener('input', handleSearch);
 
     // Photo handlers - will be defined in workflow files
-    setupPhotoHandlers('donate');
-    setupPhotoHandlers('take');
 
     // Flow event listeners - will be defined in workflow files
     setupDonateEventListeners();

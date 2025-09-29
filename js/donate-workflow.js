@@ -256,3 +256,83 @@ function setupDonateEventListeners() {
         switchToMap();
     });
 }
+
+/** Option B encapsulation for Donate flow **/
+(function(){
+  // Expose on window for app-core.js
+  window.setupDonateEventListeners = function setupDonateEventListeners() {
+    const root = document.querySelector('#donateView') || document;
+    // Prefer namespaced IDs; also support data-attrs fallback
+    const takeBtn = root.querySelector('#donateTakePhotoBtn, [data-action="donate-take-photo"]');
+    const fileBtn = root.querySelector('#donateSelectPhotoBtn, [data-action="donate-select-photo"]');
+    const fileInput = root.querySelector('#donatePhotoInput, input[data-role="donate-photo-input"]');
+    const previewImg = root.querySelector('#donateImagePreview, img[data-role="donate-image-preview"]');
+
+    if (!fileInput) {
+      console.warn('[donate] photo input not found');
+    }
+
+    // Clean previous listeners (idempotent)
+    if (takeBtn && takeBtn._donateBound !== true) {
+      takeBtn.addEventListener('click', () => {
+        // Mobile browsers often need an <input capture>. If present, click it.
+        if (fileInput) fileInput.click();
+      });
+      takeBtn._donateBound = true;
+    }
+
+    if (fileBtn && fileBtn._donateBound !== true) {
+      fileBtn.addEventListener('click', () => {
+        if (fileInput) fileInput.click();
+      });
+      fileBtn._donateBound = true;
+    }
+
+    if (fileInput && fileInput._donateBound !== true) {
+      fileInput.addEventListener('change', async () => {
+        try {
+          // Lazy import to avoid bundling if not needed
+          const utils = await import('./photo-utils.js');
+          const { file, error } = utils.pickFirstFile(fileInput, { maxBytes: 8_000_000, acceptTypes: ['image/jpeg','image/png','image/webp'] });
+          if (error) {
+            console.warn('[donate] ' + error);
+            return;
+          }
+          const dataURL = await utils.fileToDataURL(file);
+          const blob = await utils.resizeDataURL(dataURL, { maxW: 1600, maxH: 1600, quality: 0.85, type: 'image/jpeg' });
+          const previewURL = await utils.blobToDataURL(blob);
+
+          if (previewImg) {
+            previewImg.src = previewURL;
+            previewImg.dataset.hasImage = "1";
+          }
+          // store for submit
+          window.__donatePhotoBlob = blob;
+        } catch (e) {
+          console.error('[donate] file handling failed', e);
+        }
+      });
+      fileInput._donateBound = true;
+    }
+
+    // Hook submit if present
+    const submitBtn = root.querySelector('#donateSubmitBtn, [data-action="donate-submit"]');
+    if (submitBtn && submitBtn._donateBound !== true) {
+      submitBtn.addEventListener('click', async (e) => {
+        try {
+          e.preventDefault();
+          const photoBlob = window.__donatePhotoBlob || null;
+          // If donate module already had a specific proceed function, call it.
+          if (typeof window.proceedToDonatePhoto === 'function') {
+            await window.proceedToDonatePhoto(photoBlob);
+          } else {
+            console.warn('[donate] proceedToDonatePhoto not found; skipped.');
+          }
+        } catch (err) {
+          console.error('[donate] submit failed', err);
+        }
+      });
+      submitBtn._donateBound = true;
+    }
+  };
+})();
