@@ -62,6 +62,37 @@ function resetReportFlow() {
     select.__bound = true;
   }
 })();
+// Report: Back to QR in Step 1b
+(function wireReportBackToQR(){
+  const candidates = [
+    'reportBackToQRBtn',
+    'reportBackToScanBtn',
+    'reportBackToQRScanBtn',
+    'backToReportQRBtn'
+  ];
+  let btn = null;
+  for (const id of candidates) {
+    btn = document.getElementById(id);
+    if (btn) break;
+  }
+  if (!btn) {
+    const wrap = document.getElementById('reportStep1b');
+    if (wrap) {
+      btn = Array.from(wrap.querySelectorAll('button'))
+        .find(b => (b.textContent || '').toLowerCase().includes('back to qr scan'));
+    }
+  }
+  if (btn && !btn.__bound) {
+    btn.addEventListener('click', () => {
+      try { if (typeof startQRScanner === 'function') startQRScanner('qr-scanner', 'report'); } catch {}
+      document.getElementById('reportStep1b')?.classList.remove('active');
+      document.getElementById('reportStep1')?.classList.add('active');
+      document.getElementById('step2')?.classList.remove('active');
+      document.getElementById('step1')?.classList.add('active');
+    });
+    btn.__bound = true;
+  }
+})();
 
 function __robustTriggerFileInput(inputEl) {
       if (inputEl) {
@@ -308,3 +339,30 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// Report: Step 2 Back / Continue
+(function wireReportStep2Nav(){
+  const back = document.getElementById('reportPhotoBackBtn') || document.getElementById('reportBackBtn');
+  if (back && !back.__bound) {
+    back.addEventListener('click', () => {
+      document.getElementById('reportStep2')?.classList.remove('active');
+      document.getElementById('reportStep1')?.classList.add('active');
+      document.getElementById('step2')?.classList.remove('active');
+      document.getElementById('step1')?.classList.add('active');
+      try { startQRScanner('qr-scanner', 'report'); } catch {}
+    });
+    back.__bound = true;
+  }
+
+  const cont = document.getElementById('reportPhotoNextBtn') || document.getElementById('reportContinueBtn');
+  if (cont && !cont.__bound) {
+    cont.addEventListener('click', (e) => {
+      e.preventDefault();
+      // This should proceed to details/summary depending on your original flow
+      if (typeof proceedToReportDetails === 'function') {
+        proceedToReportDetails();
+      }
+    });
+    cont.__bound = true;
+  }
+})();

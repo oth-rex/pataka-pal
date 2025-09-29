@@ -66,6 +66,39 @@ function resetDonateFlow() {
     select.__bound = true;
   }
 })();
+// Donate: Back to QR in Step 1b
+(function wireDonateBackToQR(){
+  // We’ll try a few common button IDs; we bind the first one found.
+  const candidates = [
+    'donateBackToQRBtn',
+    'donateBackToScanBtn',
+    'donateBackToQRScanBtn',
+    'backToDonateQRBtn'
+  ];
+  let btn = null;
+  for (const id of candidates) {
+    btn = document.getElementById(id);
+    if (btn) break;
+  }
+  if (!btn) {
+    // Fallback: find a button in the manual section whose text includes “Back to QR”
+    const wrap = document.getElementById('donateSection1b');
+    if (wrap) {
+      btn = Array.from(wrap.querySelectorAll('button'))
+        .find(b => (b.textContent || '').toLowerCase().includes('back to qr'));
+    }
+  }
+  if (btn && !btn.__bound) {
+    btn.addEventListener('click', () => {
+      try { if (typeof startQRScanner === 'function') startQRScanner('donate-qr-scanner', 'donate'); } catch {}
+      document.getElementById('donateSection1b')?.classList.remove('active');
+      document.getElementById('donateSection1')?.classList.add('active');
+      document.getElementById('donateStep2')?.classList.remove('active');
+      document.getElementById('donateStep1')?.classList.add('active');
+    });
+    btn.__bound = true;
+  }
+})();
 
 // --- Donate: Step 2 (photo) navigation (Back/Next) ---
 (function wireDonateStep2Nav() {
@@ -197,18 +230,31 @@ function showDonateSuccess() {
 
 // Helper functions
 async function populatePatakaDropdown(selectId) {
-    await fetchCupboards();
+  try {
+    // Ensure data exists before filling the dropdown
+    if (!Array.isArray(window.cupboards) || window.cupboards.length === 0) {
+      if (typeof fetchCupboards === 'function') {
+        await fetchCupboards(); // loads into global `cupboards`
+      }
+    }
+
+    const list = Array.isArray(window.cupboards) ? window.cupboards : [];
     const select = document.getElementById(selectId);
-    
+    if (!select) return;
+
+    // Fill options
     select.innerHTML = '<option value="">Choose a pataka...</option>';
-    
-    cupboards.forEach(pataka => {
-        const option = document.createElement('option');
-        option.value = pataka.id;
-        option.textContent = `${pataka.name} - ${pataka.address}`;
-        select.appendChild(option);
-    });
+    for (const p of list) {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = `${p.name} - ${p.suburb || p.area || ''}`.trim();
+      select.appendChild(opt);
+    }
+  } catch (e) {
+    console.warn('[populatePatakaDropdown] failed:', e);
+  }
 }
+
 
 function addManualItem(name, quantity, actionType) {
     if (!actionData.detectedItems) actionData.detectedItems = [];

@@ -241,3 +241,54 @@ function setupTakeEventListeners() {
 
   // Note: photo buttons & #takePhotoNextBtn already wired by setupTakeEventListeners()
 })();
+// Take: Back to QR in Step 1b
+(function wireTakeBackToQR(){
+  const candidates = [
+    'takeBackToQRBtn',
+    'takeBackToScanBtn',
+    'takeBackToQRScanBtn',
+    'backToTakeQRBtn'
+  ];
+  let btn = null;
+  for (const id of candidates) {
+    btn = document.getElementById(id);
+    if (btn) break;
+  }
+  if (!btn) {
+    const wrap = document.getElementById('takeSection1b');
+    if (wrap) {
+      btn = Array.from(wrap.querySelectorAll('button'))
+        .find(b => (b.textContent || '').toLowerCase().includes('back to qr scan'));
+    }
+  }
+  if (btn && !btn.__bound) {
+    btn.addEventListener('click', () => {
+      try { if (typeof startQRScanner === 'function') startQRScanner('take-qr-scanner', 'take'); } catch {}
+      document.getElementById('takeSection1b')?.classList.remove('active');
+      document.getElementById('takeSection1')?.classList.add('active');
+      document.getElementById('takeStep2')?.classList.remove('active');
+      document.getElementById('takeStep1')?.classList.add('active');
+    });
+    btn.__bound = true;
+  }
+})();
+// Take: Step 2 Continue
+(function wireTakeStep2Continue(){
+  const candidates = ['takePhotoNextBtn','takeSubmitBtn','takeContinueBtn'];
+  let btn = null;
+  for (const id of candidates) {
+    btn = document.getElementById(id);
+    if (btn) break;
+  }
+  if (btn && !btn.__bound) {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      try {
+        if (typeof proceedToTakePhoto === 'function') {
+          await proceedToTakePhoto(window.__takePhotoBlob || null);
+        }
+      } catch (err) { console.error('[take] continue failed', err); }
+    });
+    btn.__bound = true;
+  }
+})();
