@@ -110,56 +110,51 @@ function setupTakeEventListeners() {
 (function(){
   // Expose on window for app-core.js
   window.setupTakeEventListeners = function setupTakeEventListeners() {
-    const root = document.querySelector('#takeView') || document;
-    const takeBtn = root.querySelector('#takeTakePhotoBtn, [data-action="take-take-photo"]');
-    const fileBtn = root.querySelector('#takeSelectPhotoBtn, [data-action="take-select-photo"]');
-    const fileInput = root.querySelector('#takePhotoInput, input[data-role="take-photo-input"]');
-    const previewImg = root.querySelector('#takeImagePreview, img[data-role="take-image-preview"]');
+    const root = document;
+    // v31 IDs
+    const takeBtn   = root.querySelector('#takeTakePhotoBtn');
+    const takeInput = root.querySelector('#takeTakePhotoInput');
+    const fileBtn   = root.querySelector('#takeSelectPhotoBtn');
+    const fileInput = root.querySelector('#takeSelectPhotoInput');
+    const previewImg = root.querySelector('#takePhotoPreview');
 
-    if (!fileInput) {
-      console.warn('[take] photo input not found');
+    const bindClickToInput = (btn, input) => {
+      if (btn && input && btn._takeBound !== input) {
+        btn.addEventListener('click', () => input.click());
+        btn._takeBound = input;
+      }
+    };
+
+    bindClickToInput(takeBtn, takeInput);
+    bindClickToInput(fileBtn, fileInput);
+
+    const onChange = async (inputEl) => {
+      const utils = await import('./photo-utils.js');
+      const { file, error } = utils.pickFirstFile(inputEl, { maxBytes: 8_000_000, acceptTypes: ['image/jpeg','image/png','image/webp'] });
+      if (error) {
+        console.warn('[take] ' + error);
+        return;
+      }
+      const dataURL = await utils.fileToDataURL(file);
+      const blob = await utils.resizeDataURL(dataURL, { maxW: 1600, maxH: 1600, quality: 0.85, type: 'image/jpeg' });
+      const previewURL = await utils.blobToDataURL(blob);
+      if (previewImg) {
+        previewImg.src = previewURL;
+        previewImg.dataset.hasImage = "1";
+      }
+      window.__takePhotoBlob = blob;
+    };
+
+    if (takeInput && takeInput._takeBound !== true) {
+      takeInput.addEventListener('change', () => onChange(takeInput));
+      takeInput._takeBound = true;
     }
-
-    if (takeBtn && takeBtn._takeBound !== true) {
-      takeBtn.addEventListener('click', () => {
-        if (fileInput) fileInput.click();
-      });
-      takeBtn._takeBound = true;
-    }
-
-    if (fileBtn && fileBtn._takeBound !== true) {
-      fileBtn.addEventListener('click', () => {
-        if (fileInput) fileInput.click();
-      });
-      fileBtn._takeBound = true;
-    }
-
     if (fileInput && fileInput._takeBound !== true) {
-      fileInput.addEventListener('change', async () => {
-        try {
-          const utils = await import('./photo-utils.js');
-          const { file, error } = utils.pickFirstFile(fileInput, { maxBytes: 8_000_000, acceptTypes: ['image/jpeg','image/png','image/webp'] });
-          if (error) {
-            console.warn('[take] ' + error);
-            return;
-          }
-          const dataURL = await utils.fileToDataURL(file);
-          const blob = await utils.resizeDataURL(dataURL, { maxW: 1600, maxH: 1600, quality: 0.85, type: 'image/jpeg' });
-          const previewURL = await utils.blobToDataURL(blob);
-
-          if (previewImg) {
-            previewImg.src = previewURL;
-            previewImg.dataset.hasImage = "1";
-          }
-          window.__takePhotoBlob = blob;
-        } catch (e) {
-          console.error('[take] file handling failed', e);
-        }
-      });
+      fileInput.addEventListener('change', () => onChange(fileInput));
       fileInput._takeBound = true;
     }
 
-    const submitBtn = root.querySelector('#takeSubmitBtn, [data-action="take-submit"]');
+    const submitBtn = root.querySelector('#takePhotoNextBtn, #takeSubmitBtn');
     if (submitBtn && submitBtn._takeBound !== true) {
       submitBtn.addEventListener('click', async (e) => {
         try {
@@ -177,4 +172,72 @@ function setupTakeEventListeners() {
       submitBtn._takeBound = true;
     }
   };
+})();
+
+// --- Take: Step 1 (scan) & manual select wiring ---
+(function wireTakeStep1() {
+  const scanSection = document.getElementById('takeSection1');
+  const manualSection = document.getElementById('takeSection1b'); // if present
+
+  const unableBtn = document.getElementById('takeUnableToScanBtn');
+  if (unableBtn && !unableBtn.__bound) {
+    unableBtn.addEventListener('click', async () => {
+      try {
+        if (typeof stopQRScanner === 'function') stopQRScanner();
+        scanSection?.classList.remove('active');
+        manualSection?.classList.add('active');
+
+        if (typeof populatePatakaDropdown === 'function') {
+          await populatePatakaDropdown('takePatakaSelect');
+        }
+
+        document.getElementById('takeStep1')?.classList.remove('active');
+        document.getElementById('takeStep1')?.classList.add('completed');
+        document.getElementById('takeStep2')?.classList.add('active');
+      } catch (e) { console.warn('[take] unable-to-scan failed', e); }
+    });
+    unableBtn.__bound = true;
+  }
+
+  const cancelBtn = document.getElementById('cancelTakeBtn');
+  if (cancelBtn && !cancelBtn.__bound) {
+    cancelBtn.addEventListener('click', () => {
+      try { if (typeof stopQRScanner === 'function') stopQRScanner(); } catch {}
+      if (typeof switchToMap === 'function') switchToMap();
+    });
+    cancelBtn.__bound = true;
+  }
+
+  const select = document.getElementById('takePatakaSelect');
+  const cont   = document.getElementById('takePatakaContinueBtn');
+  if (select && cont && !select.__bound) {
+    select.addEventListener('change', () => { cont.disabled = !select.value; });
+    cont.addEventListener('click', () => {
+      const id = select.value;
+      if (!id) return;
+      const pataka = (window.cupboards || []).find(p => String(p.id) === String(id));
+      if (pataka) {
+        window.selectedPataka = pataka;
+        proceedToTakePhoto();
+      }
+    });
+    select.__bound = true;
+  }
+})();
+
+// --- Take: Step 2 navigation (Back/Next) ---
+(function wireTakeStep2Nav() {
+  const backBtn = document.getElementById('takePhotoBackBtn') || document.getElementById('takeBackBtn');
+  if (backBtn && !backBtn.__bound) {
+    backBtn.addEventListener('click', () => {
+      document.getElementById('takeSection2')?.classList.remove('active');
+      document.getElementById('takeSection1')?.classList.add('active');
+      document.getElementById('takeStep2')?.classList.remove('active');
+      document.getElementById('takeStep1')?.classList.add('active');
+      try { startQRScanner('take-qr-scanner', 'take'); } catch {}
+    });
+    backBtn.__bound = true;
+  }
+
+  // Note: photo buttons & #takePhotoNextBtn already wired by setupTakeEventListeners()
 })();

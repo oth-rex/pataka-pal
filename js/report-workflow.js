@@ -9,6 +9,59 @@ function resetReportFlow() {
     selectedPataka = null;
     actionData = {};
 }
+// --- Report: Step 1 (scan) & manual select wiring ---
+(function wireReportStep1() {
+  const scanSection = document.getElementById('reportStep1');
+  const manualSection = document.getElementById('reportStep1b');
+
+  // 1) Unable to scan → manual select
+  const unableBtn = document.getElementById('unableToScanBtn');
+  if (unableBtn && !unableBtn.__bound) {
+    unableBtn.addEventListener('click', async () => {
+      try {
+        if (typeof stopQRScanner === 'function') stopQRScanner();
+        scanSection?.classList.remove('active');
+        manualSection?.classList.add('active');
+
+        if (typeof populatePatakaDropdown === 'function') {
+          await populatePatakaDropdown('reportPatakaSelect');
+        }
+
+        document.getElementById('step1')?.classList.remove('active');
+        document.getElementById('step1')?.classList.add('completed');
+        document.getElementById('step2')?.classList.add('active');
+      } catch (e) { console.warn('[report] unable-to-scan failed', e); }
+    });
+    unableBtn.__bound = true;
+  }
+
+  // 2) Cancel → back to map
+  const cancelBtn = document.getElementById('cancelReportBtn');
+  if (cancelBtn && !cancelBtn.__bound) {
+    cancelBtn.addEventListener('click', () => {
+      try { if (typeof stopQRScanner === 'function') stopQRScanner(); } catch {}
+      if (typeof switchToMap === 'function') switchToMap();
+    });
+    cancelBtn.__bound = true;
+  }
+
+  // 3) Manual select Continue (v31 used confirmPatakaBtn)
+  const select = document.getElementById('reportPatakaSelect');
+  const cont   = document.getElementById('confirmPatakaBtn') || document.getElementById('reportPatakaContinueBtn');
+  if (select && cont && !select.__bound) {
+    select.addEventListener('change', () => { cont.disabled = !select.value; });
+    cont.addEventListener('click', () => {
+      const id = select.value;
+      if (!id) return;
+      const pataka = (window.cupboards || []).find(p => String(p.id) === String(id));
+      if (pataka) {
+        window.selectedPataka = pataka;
+        proceedToReportDetails();
+      }
+    });
+    select.__bound = true;
+  }
+})();
 
 function __robustTriggerFileInput(inputEl) {
       if (inputEl) {
