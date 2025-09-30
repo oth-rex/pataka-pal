@@ -61,14 +61,14 @@
 
 ### **DAY 0.5: Infrastructure Setup** (September 30, 2025) 
 **Duration:** 15 minutes  
-**Status:** IN PROGRESS
+**Status:** COMPLETE
 
-- [ ] Install Git on Windows
-- [ ] Clone GitHub repo locally
-- [ ] Verify auto-deployment works (push to main = live deployment)
-- [ ] Create `day1-module-foundation` branch
-- [ ] **Decision:** Stay on GitHub (don't migrate to Azure DevOps Repos)
-- [ ] **Decision:** Defer custom domain until post-demo
+- [x] Install Git on Windows
+- [x] Clone GitHub repo locally
+- [x] Verify auto-deployment works (push to main = live deployment)
+- [ ] Create `day1-module-foundation` branch (delayed to tomorrow)
+- [x] **Decision:** Stay on GitHub (don't migrate to Azure DevOps Repos)
+- [x] **Decision:** Defer custom domain until post-demo
 
 **Git Commit:** "Initial local setup complete"
 
