@@ -1,4 +1,16 @@
-// Flow reset functions
+// Import from config.js
+import { state, API_BASE_URL, getItemEmoji, foodWhitelist } from './config.js';
+
+// Import from app-core.js
+import { showCustomModal, setActiveTab, switchToMap } from './app-core.js';
+
+// Import from qr-scanner.js
+import { stopQRScanner, startQRScanner } from './qr-scanner.js';
+
+// Import from map-functions.js
+import { fetchCupboards } from './map-functions.js';
+
+// Flow reset function
 function resetDonateFlow() {
     document.querySelectorAll('#donateView .action-section').forEach(section => section.classList.remove('active'));
     document.getElementById('donateSection1').classList.add('active');
@@ -6,121 +18,13 @@ function resetDonateFlow() {
     document.querySelectorAll('#donateView .step').forEach(step => step.classList.remove('active', 'completed'));
     document.getElementById('donateStep1').classList.add('active');
     
-    selectedPataka = null;
-    actionData = {};
+    state.selectedPataka = null;
+    state.actionData = {};
 }
-// --- Donate: Step 1 (scan) & manual select wiring ---
-(function wireDonateStep1() {
-  const scanSection = document.getElementById('donateSection1');
-  const manualSection = document.getElementById('donateSection1b');
-
-  // 1) Unable to scan → show manual select
-  const unableBtn = document.getElementById('donateUnableToScanBtn');
-  if (unableBtn && !unableBtn.__bound) {
-    unableBtn.addEventListener('click', async () => {
-      try {
-        if (typeof stopQRScanner === 'function') stopQRScanner();
-        scanSection?.classList.remove('active');
-        manualSection?.classList.add('active');
-
-        // populate dropdown
-        if (typeof populatePatakaDropdown === 'function') {
-          await populatePatakaDropdown('donatePatakaSelect');
-        }
-
-        // stepper: 1 completed, 2 active
-        document.getElementById('donateStep1')?.classList.remove('active');
-        document.getElementById('donateStep1')?.classList.add('completed');
-        document.getElementById('donateStep2')?.classList.add('active');
-      } catch (e) { console.warn('[donate] unable-to-scan failed', e); }
-    });
-    unableBtn.__bound = true;
-  }
-
-  // 2) Cancel → back to map
-  const cancelBtn = document.getElementById('cancelDonateBtn');
-  if (cancelBtn && !cancelBtn.__bound) {
-    cancelBtn.addEventListener('click', () => {
-      try { if (typeof stopQRScanner === 'function') stopQRScanner(); } catch {}
-      if (typeof switchToMap === 'function') switchToMap();
-    });
-    cancelBtn.__bound = true;
-  }
-
-  // 3) Manual select: enable Continue when a pataka is chosen
-  const select = document.getElementById('donatePatakaSelect');
-  const cont   = document.getElementById('donatePatakaContinueBtn'); // v31-style id
-  if (select && cont && !select.__bound) {
-    select.addEventListener('change', () => {
-      cont.disabled = !select.value;
-    });
-    cont.addEventListener('click', () => {
-      const id = select.value;
-      if (!id) return;
-      const pataka = (window.cupboards || []).find(p => String(p.id) === String(id));
-      if (pataka) {
-        window.selectedPataka = pataka;
-        proceedToDonatePhoto();
-      }
-    });
-    select.__bound = true;
-  }
-})();
-// Donate: Back to QR in Step 1b
-(function wireDonateBackToQR(){
-  // We’ll try a few common button IDs; we bind the first one found.
-  const candidates = [
-    'donateBackToQRBtn',
-    'donateBackToScanBtn',
-    'donateBackToQRScanBtn',
-    'backToDonateQRBtn'
-  ];
-  let btn = null;
-  for (const id of candidates) {
-    btn = document.getElementById(id);
-    if (btn) break;
-  }
-  if (!btn) {
-    // Fallback: find a button in the manual section whose text includes “Back to QR”
-    const wrap = document.getElementById('donateSection1b');
-    if (wrap) {
-      btn = Array.from(wrap.querySelectorAll('button'))
-        .find(b => (b.textContent || '').toLowerCase().includes('back to qr'));
-    }
-  }
-  if (btn && !btn.__bound) {
-    btn.addEventListener('click', () => {
-      try { if (typeof startQRScanner === 'function') startQRScanner('donate-qr-scanner', 'donate'); } catch {}
-      document.getElementById('donateSection1b')?.classList.remove('active');
-      document.getElementById('donateSection1')?.classList.add('active');
-      document.getElementById('donateStep2')?.classList.remove('active');
-      document.getElementById('donateStep1')?.classList.add('active');
-    });
-    btn.__bound = true;
-  }
-})();
-
-// --- Donate: Step 2 (photo) navigation (Back/Next) ---
-(function wireDonateStep2Nav() {
-  const backBtn = document.getElementById('donatePhotoBackBtn');
-  if (backBtn && !backBtn.__bound) {
-    backBtn.addEventListener('click', () => {
-      // back to Step 1 (scan/manual)
-      document.getElementById('donateSection2')?.classList.remove('active');
-      document.getElementById('donateSection1')?.classList.add('active');
-      document.getElementById('donateStep2')?.classList.remove('active');
-      document.getElementById('donateStep1')?.classList.add('active');
-      try { startQRScanner('donate-qr-scanner', 'donate'); } catch {}
-    });
-    backBtn.__bound = true;
-  }
-
-  // Note: photo buttons & #donatePhotoNextBtn already wired by setupDonateEventListeners()
-})();
 
 // Navigation functions
 function proceedToDonatePhoto() {
-    document.getElementById('donateSelectedPatakaName').textContent = selectedPataka.name;
+    document.getElementById('donateSelectedPatakaName').textContent = state.selectedPataka.name;
     
     document.getElementById('donateSection1').classList.remove('active');
     document.getElementById('donateSection1b').classList.remove('active');
@@ -186,8 +90,8 @@ async function processAIAnalysis(actionType) {
     loadingElement.style.display = 'block';
     resultsElement.classList.add('hidden');
     
-    if (actionData.photo) {
-        const aiResult = await analyzeImageWithAI(actionData.photo);
+    if (state.actionData.photo) {
+        const aiResult = await analyzeImageWithAI(state.actionData.photo);
         const detectedItems = filterFoodItems(aiResult);
         displayAIResults(detectedItems, actionType);
     } else {
@@ -218,7 +122,7 @@ function displayAIResults(detectedItems, actionType) {
         });
     }
     
-    actionData.detectedItems = detectedItems;
+    state.actionData.detectedItems = detectedItems;
 }
 
 function showDonateSuccess() {
@@ -230,34 +134,33 @@ function showDonateSuccess() {
 
 // Helper functions
 async function populatePatakaDropdown(selectId) {
-  try {
-    // Ensure data exists before filling the dropdown
-    if (!Array.isArray(window.cupboards) || window.cupboards.length === 0) {
-      if (typeof fetchCupboards === 'function') {
-        await fetchCupboards(); // loads into global `cupboards`
-      }
-    }
+    try {
+        // Ensure data exists before filling the dropdown
+        if (!Array.isArray(state.cupboards) || state.cupboards.length === 0) {
+            await fetchCupboards();
+        }
 
-    const list = Array.isArray(window.cupboards) ? window.cupboards : [];
-    const select = document.getElementById(selectId);
-    if (!select) return;
+        const list = Array.isArray(state.cupboards) ? state.cupboards : [];
+        const select = document.getElementById(selectId);
+        if (!select) return;
 
-    // Fill options
-    select.innerHTML = '<option value="">Choose a pataka...</option>';
-    for (const p of list) {
-      const opt = document.createElement('option');
-      opt.value = p.id;
-      opt.textContent = `${p.name} - ${p.suburb || p.area || ''}`.trim();
-      select.appendChild(opt);
+        // Fill options
+        select.innerHTML = '<option value="">Choose a pataka...</option>';
+        for (const p of list) {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = `${p.name} - ${p.address}`;
+            select.appendChild(opt);
+        }
+        
+        console.log(`✅ Populated ${selectId} with ${list.length} options`);
+    } catch (e) {
+        console.warn('[populatePatakaDropdown] failed:', e);
     }
-  } catch (e) {
-    console.warn('[populatePatakaDropdown] failed:', e);
-  }
 }
 
-
 function addManualItem(name, quantity, actionType) {
-    if (!actionData.detectedItems) actionData.detectedItems = [];
+    if (!state.actionData.detectedItems) state.actionData.detectedItems = [];
     
     const newItem = {
         name: name,
@@ -267,204 +170,252 @@ function addManualItem(name, quantity, actionType) {
         manual: true
     };
     
-    actionData.detectedItems.push(newItem);
-    displayAIResults(actionData.detectedItems, actionType);
+    state.actionData.detectedItems.push(newItem);
+    displayAIResults(state.actionData.detectedItems, actionType);
 }
 
+// Photo handling helper
+function handlePhotoSelection(e, previewImgId, previewContainerId) {
+    const file = e.target.files[0];
+    if (file) {
+        if (!file.type.startsWith('image/')) {
+            showCustomModal('Invalid File', 'Please select an image file');
+            return;
+        }
+        
+        if (file.size > 5 * 1024 * 1024) {
+            showCustomModal('File Too Large', 'Image size must be less than 5MB');
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const preview = document.getElementById(previewImgId);
+            const container = document.getElementById(previewContainerId);
+            preview.src = e.target.result;
+            container.classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+        
+        state.actionData.photo = file;
+    }
+}
+
+// Event listeners setup
 function setupDonateEventListeners() {
-    document.getElementById('donateUnableToScanBtn').addEventListener('click', async () => {
-        await stopQRScanner();
-        await populatePatakaDropdown('donatePatakaSelect');
-        document.getElementById('donateSection1').classList.remove('active');
-        document.getElementById('donateSection1b').classList.add('active');
-    });
+    // Step 1: Unable to scan button
+    const unableBtn = document.getElementById('donateUnableToScanBtn');
+    if (unableBtn && !unableBtn.__donateBound) {
+        unableBtn.addEventListener('click', async () => {
+            await stopQRScanner();
+            await populatePatakaDropdown('donatePatakaSelect');
+            document.getElementById('donateSection1').classList.remove('active');
+            document.getElementById('donateSection1b').classList.add('active');
+            
+            document.getElementById('donateStep1').classList.remove('active');
+            document.getElementById('donateStep1').classList.add('completed');
+            document.getElementById('donateStep2').classList.add('active');
+        });
+        unableBtn.__donateBound = true;
+    }
 
-    document.getElementById('cancelDonateBtn').addEventListener('click', async () => {
-        await stopQRScanner();
-        setActiveTab('find');
-        switchToMap();
-    });
+    // Step 1: Cancel button
+    const cancelBtn = document.getElementById('cancelDonateBtn');
+    if (cancelBtn && !cancelBtn.__donateBound) {
+        cancelBtn.addEventListener('click', async () => {
+            await stopQRScanner();
+            setActiveTab('find');
+            switchToMap();
+        });
+        cancelBtn.__donateBound = true;
+    }
 
-    document.getElementById('backToDonateQRBtn').addEventListener('click', () => {
-        document.getElementById('donateSection1b').classList.remove('active');
-        document.getElementById('donateSection1').classList.add('active');
-        startQRScanner('donate-qr-scanner', 'donate');
-    });
+    // Step 1b: Back to QR Scan button
+    const backToQRBtn = document.getElementById('backToDonateQRBtn');
+    if (backToQRBtn && !backToQRBtn.__donateBound) {
+        backToQRBtn.addEventListener('click', () => {
+            document.getElementById('donateSection1b').classList.remove('active');
+            document.getElementById('donateSection1').classList.add('active');
+            
+            document.getElementById('donateStep2').classList.remove('active');
+            document.getElementById('donateStep1').classList.add('active');
+            document.getElementById('donateStep1').classList.remove('completed');
+            
+            startQRScanner('donate-qr-scanner', 'donate');
+        });
+        backToQRBtn.__donateBound = true;
+    }
 
-    document.getElementById('donatePatakaSelect').addEventListener('change', (e) => {
-        const cupboardId = parseInt(e.target.value);
-        const confirmBtn = document.getElementById('confirmDonatePatakaBtn');
+    // Step 1b: Pataka selection dropdown
+    const patakaSelect = document.getElementById('donatePatakaSelect');
+    const confirmBtn = document.getElementById('confirmDonatePatakaBtn');
+    if (patakaSelect && confirmBtn && !patakaSelect.__donateBound) {
+        patakaSelect.addEventListener('change', (e) => {
+            const cupboardId = parseInt(e.target.value);
+            
+            if (cupboardId) {
+                state.selectedPataka = state.cupboards.find(p => p.id === cupboardId);
+                confirmBtn.disabled = false;
+            } else {
+                state.selectedPataka = null;
+                confirmBtn.disabled = true;
+            }
+        });
         
-        if (cupboardId) {
-            selectedPataka = cupboards.find(p => p.id === cupboardId);
-            confirmBtn.disabled = false;
-        } else {
-            selectedPataka = null;
-            confirmBtn.disabled = true;
-        }
-    });
-
-    document.getElementById('confirmDonatePatakaBtn').addEventListener('click', () => {
-        proceedToDonatePhoto();
-    });
-
-    document.getElementById('donatePhotoNextBtn').addEventListener('click', () => {
-        document.getElementById('donateSection2').classList.remove('active');
-        document.getElementById('donateSection3').classList.add('active');
-        document.getElementById('donateStep2').classList.remove('active');
-        document.getElementById('donateStep2').classList.add('completed');
-        document.getElementById('donateStep3').classList.add('active');
+        confirmBtn.addEventListener('click', () => {
+            if (state.selectedPataka) {
+                proceedToDonatePhoto();
+            }
+        });
         
-        processAIAnalysis('donate');
-    });
+        patakaSelect.__donateBound = true;
+    }
 
-    document.getElementById('donatePhotoBackBtn').addEventListener('click', () => {
-        document.getElementById('donateSection2').classList.remove('active');
-        document.getElementById('donateSection1').classList.add('active');
-        
-        document.getElementById('donateStep2').classList.remove('active');
-        document.getElementById('donateStep1').classList.add('active');
-        document.getElementById('donateStep1').classList.remove('completed');
-        
-        startQRScanner('donate-qr-scanner', 'donate');
-    });
+    // Step 2: Photo buttons
+    const takePhotoBtn = document.getElementById('donateTakePhotoBtn');
+    const selectPhotoBtn = document.getElementById('donateSelectPhotoBtn');
+    const takePhotoInput = document.getElementById('donateTakePhotoInput');
+    const selectPhotoInput = document.getElementById('donateSelectPhotoInput');
+    
+    if (takePhotoBtn && !takePhotoBtn.__donateBound) {
+        takePhotoBtn.addEventListener('click', () => takePhotoInput.click());
+        takePhotoBtn.__donateBound = true;
+    }
+    
+    if (selectPhotoBtn && !selectPhotoBtn.__donateBound) {
+        selectPhotoBtn.addEventListener('click', () => selectPhotoInput.click());
+        selectPhotoBtn.__donateBound = true;
+    }
+    
+    if (takePhotoInput && !takePhotoInput.__donateBound) {
+        takePhotoInput.addEventListener('change', (e) => 
+            handlePhotoSelection(e, 'donatePhotoPreview', 'donatePhotoPreviewContainer')
+        );
+        takePhotoInput.__donateBound = true;
+    }
+    
+    if (selectPhotoInput && !selectPhotoInput.__donateBound) {
+        selectPhotoInput.addEventListener('change', (e) => 
+            handlePhotoSelection(e, 'donatePhotoPreview', 'donatePhotoPreviewContainer')
+        );
+        selectPhotoInput.__donateBound = true;
+    }
 
-    document.getElementById('donateAINextBtn').addEventListener('click', () => {
-        document.getElementById('donateSection3').classList.remove('active');
-        document.getElementById('donateSection4').classList.add('active');
-        
-        document.getElementById('donateStep3').classList.remove('active');
-        document.getElementById('donateStep3').classList.add('completed');
-        document.getElementById('donateStep4').classList.add('active');
-    });
+    // Step 2: Navigation buttons
+    const photoNextBtn = document.getElementById('donatePhotoNextBtn');
+    if (photoNextBtn && !photoNextBtn.__donateBound) {
+        photoNextBtn.addEventListener('click', () => {
+            document.getElementById('donateSection2').classList.remove('active');
+            document.getElementById('donateSection3').classList.add('active');
+            document.getElementById('donateStep2').classList.remove('active');
+            document.getElementById('donateStep2').classList.add('completed');
+            document.getElementById('donateStep3').classList.add('active');
+            
+            processAIAnalysis('donate');
+        });
+        photoNextBtn.__donateBound = true;
+    }
 
-    document.getElementById('donateAIBackBtn').addEventListener('click', () => {
-        document.getElementById('donateSection3').classList.remove('active');
-        document.getElementById('donateSection2').classList.add('active');
-        
-        document.getElementById('donateStep3').classList.remove('active');
-        document.getElementById('donateStep2').classList.add('active');
-        document.getElementById('donateStep2').classList.remove('completed');
-    });
+    const photoBackBtn = document.getElementById('donatePhotoBackBtn');
+    if (photoBackBtn && !photoBackBtn.__donateBound) {
+        photoBackBtn.addEventListener('click', () => {
+            document.getElementById('donateSection2').classList.remove('active');
+            document.getElementById('donateSection1').classList.add('active');
+            
+            document.getElementById('donateStep2').classList.remove('active');
+            document.getElementById('donateStep1').classList.add('active');
+            document.getElementById('donateStep1').classList.remove('completed');
+            
+            startQRScanner('donate-qr-scanner', 'donate');
+        });
+        photoBackBtn.__donateBound = true;
+    }
 
-    document.getElementById('donateAddManualBtn').addEventListener('click', () => {
-        const name = document.getElementById('donateManualItemName').value.trim();
-        const qty = parseInt(document.getElementById('donateManualItemQty').value);
-        
-        if (name && qty > 0) {
-            addManualItem(name, qty, 'donate');
-            document.getElementById('donateManualItemName').value = '';
-            document.getElementById('donateManualItemQty').value = '1';
-        }
-    });
+    // Step 3: AI Results navigation
+    const aiNextBtn = document.getElementById('donateAINextBtn');
+    if (aiNextBtn && !aiNextBtn.__donateBound) {
+        aiNextBtn.addEventListener('click', () => {
+            document.getElementById('donateSection3').classList.remove('active');
+            document.getElementById('donateSection4').classList.add('active');
+            
+            document.getElementById('donateStep3').classList.remove('active');
+            document.getElementById('donateStep3').classList.add('completed');
+            document.getElementById('donateStep4').classList.add('active');
+        });
+        aiNextBtn.__donateBound = true;
+    }
 
-    document.getElementById('donateSubmitBtn').addEventListener('click', () => {
-        console.log('Donation submitted');
-        showDonateSuccess();
-    });
+    const aiBackBtn = document.getElementById('donateAIBackBtn');
+    if (aiBackBtn && !aiBackBtn.__donateBound) {
+        aiBackBtn.addEventListener('click', () => {
+            document.getElementById('donateSection3').classList.remove('active');
+            document.getElementById('donateSection2').classList.add('active');
+            
+            document.getElementById('donateStep3').classList.remove('active');
+            document.getElementById('donateStep2').classList.add('active');
+            document.getElementById('donateStep2').classList.remove('completed');
+        });
+        aiBackBtn.__donateBound = true;
+    }
 
-    document.getElementById('donateCommentBackBtn').addEventListener('click', () => {
-        document.getElementById('donateSection4').classList.remove('active');
-        document.getElementById('donateSection3').classList.add('active');
-        
-        document.getElementById('donateStep4').classList.remove('active');
-        document.getElementById('donateStep3').classList.add('active');
-        document.getElementById('donateStep3').classList.remove('completed');
-    });
+    // Step 3: Add manual item button
+    const addManualBtn = document.getElementById('donateAddManualBtn');
+    if (addManualBtn && !addManualBtn.__donateBound) {
+        addManualBtn.addEventListener('click', () => {
+            const name = document.getElementById('donateManualItemName').value.trim();
+            const qty = parseInt(document.getElementById('donateManualItemQty').value);
+            
+            if (name && qty > 0) {
+                addManualItem(name, qty, 'donate');
+                document.getElementById('donateManualItemName').value = '';
+                document.getElementById('donateManualItemQty').value = '1';
+            }
+        });
+        addManualBtn.__donateBound = true;
+    }
 
-    document.getElementById('donateBackToMapBtn').addEventListener('click', () => {
-        setActiveTab('find');
-        switchToMap();
-    });
+    // Step 4: Submit button
+    const submitBtn = document.getElementById('donateSubmitBtn');
+    if (submitBtn && !submitBtn.__donateBound) {
+        submitBtn.addEventListener('click', () => {
+            console.log('Donation submitted');
+            showDonateSuccess();
+        });
+        submitBtn.__donateBound = true;
+    }
+
+    // Step 4: Back button
+    const commentBackBtn = document.getElementById('donateCommentBackBtn');
+    if (commentBackBtn && !commentBackBtn.__donateBound) {
+        commentBackBtn.addEventListener('click', () => {
+            document.getElementById('donateSection4').classList.remove('active');
+            document.getElementById('donateSection3').classList.add('active');
+            
+            document.getElementById('donateStep4').classList.remove('active');
+            document.getElementById('donateStep3').classList.add('active');
+            document.getElementById('donateStep3').classList.remove('completed');
+        });
+        commentBackBtn.__donateBound = true;
+    }
+
+    // Success: Back to Map button
+    const backToMapBtn = document.getElementById('donateBackToMapBtn');
+    if (backToMapBtn && !backToMapBtn.__donateBound) {
+        backToMapBtn.addEventListener('click', () => {
+            setActiveTab('find');
+            switchToMap();
+        });
+        backToMapBtn.__donateBound = true;
+    }
 }
 
-/** Option B encapsulation for Donate flow **/
-(function(){
-  // Expose on window for app-core.js
-  window.setupDonateEventListeners = function setupDonateEventListeners() {
+// Initialize event listeners when module loads
+setupDonateEventListeners();
 
-    // 'Unable to scan' -> switch to manual select
-    const unableBtn = document.getElementById('donateUnableToScanBtn');
-    if (unableBtn && unableBtn._donateBound !== true) {
-      unableBtn.addEventListener('click', async () => {
-        try {
-          if (typeof stopQRScanner === 'function') stopQRScanner();
-          document.getElementById('donateSection1').classList.remove('active');
-          document.getElementById('donateSection1b').classList.add('active');
-          if (typeof populatePatakaDropdown === 'function') {
-            await populatePatakaDropdown('donatePatakaSelect');
-          }
-          document.getElementById('donateStep1').classList.remove('active');
-          document.getElementById('donateStep1').classList.add('completed');
-          document.getElementById('donateStep2').classList.add('active');
-        } catch(e) { console.warn('[donate] unable-to-scan handler failed', e); }
-      });
-      unableBtn._donateBound = true;
-    }
+// Expose functions globally for QR scanner callback
+window.proceedToDonatePhoto = proceedToDonatePhoto;
+window.resetDonateFlow = resetDonateFlow;
 
-    const root = document;
-    // v31 IDs
-    const takeBtn   = root.querySelector('#donateTakePhotoBtn');
-    const takeInput = root.querySelector('#donateTakePhotoInput');
-    const fileBtn   = root.querySelector('#donateSelectPhotoBtn');
-    const fileInput = root.querySelector('#donateSelectPhotoInput');
-    const previewImg = root.querySelector('#donatePhotoPreview');
-
-    const bindClickToInput = (btn, input) => {
-      if (btn && input && btn._donateBound !== input) {
-        btn.addEventListener('click', () => input.click());
-        btn._donateBound = input;
-      }
-    };
-
-    bindClickToInput(takeBtn, takeInput);
-    bindClickToInput(fileBtn, fileInput);
-
-    const onChange = async (inputEl) => {
-      const utils = await import('./photo-utils.js');
-      const { file, error } = utils.pickFirstFile(inputEl, { maxBytes: 8_000_000, acceptTypes: ['image/jpeg','image/png','image/webp'] });
-      if (error) {
-        console.warn('[donate] ' + error);
-        return;
-      }
-      const dataURL = await utils.fileToDataURL(file);
-      const blob = await utils.resizeDataURL(dataURL, { maxW: 1600, maxH: 1600, quality: 0.85, type: 'image/jpeg' });
-      const previewURL = await utils.blobToDataURL(blob);
-      if (previewImg) {
-        previewImg.src = previewURL;
-        previewImg.dataset.hasImage = "1";
-      }
-      window.__donatePhotoBlob = blob;
-    };
-
-    if (takeInput && takeInput._donateBound !== true) {
-      takeInput.addEventListener('change', () => onChange(takeInput));
-      takeInput._donateBound = true;
-    }
-    if (fileInput && fileInput._donateBound !== true) {
-      fileInput.addEventListener('change', () => onChange(fileInput));
-      fileInput._donateBound = true;
-    }
-
-    const submitBtn = root.querySelector('#donatePhotoNextBtn, #donateSubmitBtn');
-    if (submitBtn && submitBtn._donateBound !== true) {
-      submitBtn.addEventListener('click', async (e) => {
-        try {
-          e.preventDefault();
-          const photoBlob = window.__donatePhotoBlob || null;
-          if (typeof window.proceedToDonatePhoto === 'function') {
-            await window.proceedToDonatePhoto(photoBlob);
-          } else {
-            console.warn('[donate] proceedToDonatePhoto not found; skipped.');
-          }
-        } catch (err) {
-          console.error('[donate] submit failed', err);
-        }
-      });
-      submitBtn._donateBound = true;
-    }
-  };
-})();
 // Export for ES6 modules
 export {
     resetDonateFlow,

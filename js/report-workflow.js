@@ -1,4 +1,16 @@
-// Flow reset functions
+// Import from config.js
+import { state, API_BASE_URL } from './config.js';
+
+// Import from app-core.js
+import { showCustomModal, setActiveTab, switchToMap } from './app-core.js';
+
+// Import from qr-scanner.js
+import { stopQRScanner, startQRScanner } from './qr-scanner.js';
+
+// Import from map-functions.js
+import { fetchCupboards } from './map-functions.js';
+
+// Flow reset function
 function resetReportFlow() {
     document.querySelectorAll('#reportView .action-section').forEach(section => section.classList.remove('active'));
     document.getElementById('reportStep1').classList.add('active');
@@ -6,120 +18,13 @@ function resetReportFlow() {
     document.querySelectorAll('#reportView .step').forEach(step => step.classList.remove('active', 'completed'));
     document.getElementById('step1').classList.add('active');
     
-    selectedPataka = null;
-    actionData = {};
+    state.selectedPataka = null;
+    state.actionData = {};
 }
-// --- Report: Step 1 (scan) & manual select wiring ---
-(function wireReportStep1() {
-  const scanSection = document.getElementById('reportStep1');
-  const manualSection = document.getElementById('reportStep1b');
-
-  // 1) Unable to scan → manual select
-  const unableBtn = document.getElementById('unableToScanBtn');
-  if (unableBtn && !unableBtn.__bound) {
-    unableBtn.addEventListener('click', async () => {
-      try {
-        if (typeof stopQRScanner === 'function') stopQRScanner();
-        scanSection?.classList.remove('active');
-        manualSection?.classList.add('active');
-
-        if (typeof populatePatakaDropdown === 'function') {
-          await populatePatakaDropdown('reportPatakaSelect');
-        }
-
-        document.getElementById('step1')?.classList.remove('active');
-        document.getElementById('step1')?.classList.add('completed');
-        document.getElementById('step2')?.classList.add('active');
-      } catch (e) { console.warn('[report] unable-to-scan failed', e); }
-    });
-    unableBtn.__bound = true;
-  }
-
-  // 2) Cancel → back to map
-  const cancelBtn = document.getElementById('cancelReportBtn');
-  if (cancelBtn && !cancelBtn.__bound) {
-    cancelBtn.addEventListener('click', () => {
-      try { if (typeof stopQRScanner === 'function') stopQRScanner(); } catch {}
-      if (typeof switchToMap === 'function') switchToMap();
-    });
-    cancelBtn.__bound = true;
-  }
-
-  // 3) Manual select Continue (v31 used confirmPatakaBtn)
-  const select = document.getElementById('reportPatakaSelect');
-  const cont   = document.getElementById('confirmPatakaBtn') || document.getElementById('reportPatakaContinueBtn');
-  if (select && cont && !select.__bound) {
-    select.addEventListener('change', () => { cont.disabled = !select.value; });
-    cont.addEventListener('click', () => {
-      const id = select.value;
-      if (!id) return;
-      const pataka = (window.cupboards || []).find(p => String(p.id) === String(id));
-      if (pataka) {
-        window.selectedPataka = pataka;
-        proceedToReportDetails();
-      }
-    });
-    select.__bound = true;
-  }
-})();
-// Report: Back to QR in Step 1b
-(function wireReportBackToQR(){
-  const candidates = [
-    'reportBackToQRBtn',
-    'reportBackToScanBtn',
-    'reportBackToQRScanBtn',
-    'backToReportQRBtn'
-  ];
-  let btn = null;
-  for (const id of candidates) {
-    btn = document.getElementById(id);
-    if (btn) break;
-  }
-  if (!btn) {
-    const wrap = document.getElementById('reportStep1b');
-    if (wrap) {
-      btn = Array.from(wrap.querySelectorAll('button'))
-        .find(b => (b.textContent || '').toLowerCase().includes('back to qr scan'));
-    }
-  }
-  if (btn && !btn.__bound) {
-    btn.addEventListener('click', () => {
-      try { if (typeof startQRScanner === 'function') startQRScanner('qr-scanner', 'report'); } catch {}
-      document.getElementById('reportStep1b')?.classList.remove('active');
-      document.getElementById('reportStep1')?.classList.add('active');
-      document.getElementById('step2')?.classList.remove('active');
-      document.getElementById('step1')?.classList.add('active');
-    });
-    btn.__bound = true;
-  }
-})();
-
-function __robustTriggerFileInput(inputEl) {
-      if (inputEl) {
-        const _prevDisplay = inputEl.style.display;
-        const _prevVis = inputEl.style.visibility;
-        const _prevPos = inputEl.style.position;
-        const _prevW = inputEl.style.width;
-        const _prevH = inputEl.style.height;
-        inputEl.style.position = 'absolute';
-        inputEl.style.visibility = 'hidden';
-        inputEl.style.width = '1px';
-        inputEl.style.height = '1px';
-        inputEl.style.display = 'block';
-        inputEl.click();
-        setTimeout(() => {
-          inputEl.style.display = _prevDisplay;
-          inputEl.style.visibility = _prevVis;
-          inputEl.style.position = _prevPos;
-          inputEl.style.width = _prevW;
-          inputEl.style.height = _prevH;
-        }, 0);
-      }
-    }
 
 // Navigation functions
 function proceedToReportDetails() {
-    document.getElementById('selectedPatakaName').textContent = selectedPataka.name;
+    document.getElementById('selectedPatakaName').textContent = state.selectedPataka.name;
     
     document.getElementById('reportStep1').classList.remove('active');
     document.getElementById('reportStep1b').classList.remove('active');
@@ -137,8 +42,35 @@ function showReportSuccess() {
     document.getElementById('step3').classList.add('completed');
 }
 
-// Report-specific photo handling
-function handleReportPhotoSelection(e) {
+// Helper functions
+async function populatePatakaDropdown(selectId) {
+    try {
+        // Ensure data exists before filling the dropdown
+        if (!Array.isArray(state.cupboards) || state.cupboards.length === 0) {
+            await fetchCupboards();
+        }
+
+        const list = Array.isArray(state.cupboards) ? state.cupboards : [];
+        const select = document.getElementById(selectId);
+        if (!select) return;
+
+        // Fill options
+        select.innerHTML = '<option value="">Choose a pataka...</option>';
+        for (const p of list) {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = `${p.name} - ${p.address}`;
+            select.appendChild(opt);
+        }
+        
+        console.log(`✅ Populated ${selectId} with ${list.length} options`);
+    } catch (e) {
+        console.warn('[populatePatakaDropdown] failed:', e);
+    }
+}
+
+// Photo handling helper
+function handlePhotoSelection(e, previewImgId, previewContainerId) {
     const file = e.target.files[0];
     if (file) {
         if (!file.type.startsWith('image/')) {
@@ -153,116 +85,25 @@ function handleReportPhotoSelection(e) {
         
         const reader = new FileReader();
         reader.onload = function(e) {
-            const preview = document.getElementById('photoPreview');
-            const container = document.getElementById('photoPreviewContainer');
+            const preview = document.getElementById(previewImgId);
+            const container = document.getElementById(previewContainerId);
             preview.src = e.target.result;
             container.classList.remove('hidden');
         };
         reader.readAsDataURL(file);
         
-        actionData.photo = file;
+        state.actionData.photo = file;
     }
 }
 
-function setupReportEventListeners() {
-    document.getElementById('unableToScanBtn').addEventListener('click', async () => {
-        await stopQRScanner();
-        await populatePatakaDropdown('patakaSelect');
-        document.getElementById('reportStep1').classList.remove('active');
-        document.getElementById('reportStep1b').classList.add('active');
-    });
-
-    document.getElementById('cancelReportBtn').addEventListener('click', async () => {
-        await stopQRScanner();
-        setActiveTab('find');
-        switchToMap();
-    });
-
-    document.getElementById('backToScanBtn').addEventListener('click', () => {
-        document.getElementById('reportStep1b').classList.remove('active');
-        document.getElementById('reportStep1').classList.add('active');
-        startQRScanner('qr-scanner', 'report');
-    });
-
-    document.getElementById('patakaSelect').addEventListener('change', (e) => {
-        const cupboardId = parseInt(e.target.value);
-        const confirmBtn = document.getElementById('confirmPatakaBtn');
-        
-        if (cupboardId) {
-            selectedPataka = cupboards.find(p => p.id === cupboardId);
-            confirmBtn.disabled = false;
-        } else {
-            selectedPataka = null;
-            confirmBtn.disabled = true;
-        }
-    });
-
-    document.getElementById('confirmPatakaBtn').addEventListener('click', () => {
-        proceedToReportDetails();
-    });
-
-    // Report photo handlers
-    document.getElementById('takePhotoBtn')?.addEventListener('click', () => { const el = document.getElementById('takePhotoInput'); __robustTriggerFileInput(el); });
-
-    document.getElementById('selectPhotoBtn')?.addEventListener('click', () => { const el = document.getElementById('selectPhotoInput'); __robustTriggerFileInput(el); });
-
-    document.getElementById('takePhotoInput').addEventListener('change', handleReportPhotoSelection);
-    document.getElementById('selectPhotoInput').addEventListener('change', handleReportPhotoSelection);
-
-    document.getElementById('continueToContactBtn').addEventListener('click', () => {
-        const description = document.getElementById('issueDescription').value.trim();
-        const hasPhoto = actionData.photo;
-        
-        if (!description && !hasPhoto) {
-            document.getElementById('reportValidation').classList.remove('hidden');
-            return;
-        }
-        
-        document.getElementById('reportValidation').classList.add('hidden');
-        actionData.description = description;
-        
-        document.getElementById('reportStep2').classList.remove('active');
-        document.getElementById('reportStep3').classList.add('active');
-        
-        document.getElementById('step2').classList.remove('active');
-        document.getElementById('step2').classList.add('completed');
-        document.getElementById('step3').classList.add('active');
-    });
-
-    document.getElementById('backToSelectionBtn').addEventListener('click', () => {
-        document.getElementById('reportStep2').classList.remove('active');
-        document.getElementById('reportStep1').classList.add('active');
-        
-        document.getElementById('step2').classList.remove('active');
-        document.getElementById('step1').classList.add('active');
-        document.getElementById('step1').classList.remove('completed');
-        
-        startQRScanner('qr-scanner', 'report');
-    });
-
-    document.getElementById('backToDetailsBtn').addEventListener('click', () => {
-        document.getElementById('reportStep3').classList.remove('active');
-        document.getElementById('reportStep2').classList.add('active');
-        
-        document.getElementById('step3').classList.remove('active');
-        document.getElementById('step2').classList.add('active');
-        document.getElementById('step2').classList.remove('completed');
-    });
-
-    document.getElementById('backToMapBtn').addEventListener('click', () => {
-        setActiveTab('find');
-        switchToMap();
-    });
-}
-
-// Report Issue Submission Integration (from v27)
+// Report Issue Submission (Backend Integration - KEEP THIS WORKING!)
 async function submitReportIssueFromApp() {
     try {
         // Require selectedPataka from app state
-        if (typeof selectedPataka !== 'object' || !selectedPataka || !selectedPataka.id) {
-            throw new Error('No pataka selected. Please pick a pätaka first.');
+        if (typeof state.selectedPataka !== 'object' || !state.selectedPataka || !state.selectedPataka.id) {
+            throw new Error('No pataka selected. Please pick a pātaka first.');
         }
-        const patakaId = Number(selectedPataka.id);
+        const patakaId = Number(state.selectedPataka.id);
 
         // Grab fields
         const descEl = document.getElementById('issueDescription');
@@ -273,7 +114,7 @@ async function submitReportIssueFromApp() {
 
         const description  = descEl ? (descEl.value || '').trim() : '';
         const reporterName = nameEl ? (nameEl.value || '').trim() : '';
-        const reporterEmail = ''; // your UI uses a freeform contact field
+        const reporterEmail = ''; // UI uses a freeform contact field
         const okToContact  = contactEl && contactEl.value && contactEl.value.trim().length > 0;
         const photoFile    = (takeEl && takeEl.files && takeEl.files[0]) ? takeEl.files[0]
                             : (selectEl && selectEl.files && selectEl.files[0]) ? selectEl.files[0]
@@ -295,8 +136,7 @@ async function submitReportIssueFromApp() {
 
         const res = await fetch(API_BASE_URL + '/ReportIssue', { 
             method: 'POST', 
-            body: fd,
-            timeout: 60000 // 60 second timeout for upload
+            body: fd
         });
         
         if (!res.ok) {
@@ -311,64 +151,209 @@ async function submitReportIssueFromApp() {
         return json;
     } catch (err) {
         console.error('Report submit failed:', err);
-        // Show your existing modal if available
-        if (typeof showCustomModal === 'function') {
-            showCustomModal('Report failed', (err && err.message) ? err.message : String(err));
-        } else {
-            alert((err && err.message) ? err.message : String(err));
-        }
+        showCustomModal('Report Failed', (err && err.message) ? err.message : String(err));
         throw err;
     }
 }
 
-// Initialize report submission when DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
-    const btn = document.getElementById('submitReportBtn');
-    if (btn) {
-        btn.addEventListener('click', async function(ev) {
-            ev.preventDefault();
-            btn.disabled = true;
-            const original = btn.textContent;
-            btn.textContent = 'Submitting…';
-            try { 
-                await submitReportIssueFromApp(); 
-            } finally { 
-                btn.disabled = false; 
-                btn.textContent = original; 
+// Event listeners setup
+function setupReportEventListeners() {
+    // Step 1: Unable to scan button
+    const unableBtn = document.getElementById('unableToScanBtn');
+    if (unableBtn && !unableBtn.__reportBound) {
+        unableBtn.addEventListener('click', async () => {
+            await stopQRScanner();
+            await populatePatakaDropdown('patakaSelect');
+            document.getElementById('reportStep1').classList.remove('active');
+            document.getElementById('reportStep1b').classList.add('active');
+            
+            document.getElementById('step1').classList.remove('active');
+            document.getElementById('step1').classList.add('completed');
+            document.getElementById('step2').classList.add('active');
+        });
+        unableBtn.__reportBound = true;
+    }
+
+    // Step 1: Cancel button
+    const cancelBtn = document.getElementById('cancelReportBtn');
+    if (cancelBtn && !cancelBtn.__reportBound) {
+        cancelBtn.addEventListener('click', async () => {
+            await stopQRScanner();
+            setActiveTab('find');
+            switchToMap();
+        });
+        cancelBtn.__reportBound = true;
+    }
+
+    // Step 1b: Back to QR Scan button
+    const backToQRBtn = document.getElementById('backToScanBtn');
+    if (backToQRBtn && !backToQRBtn.__reportBound) {
+        backToQRBtn.addEventListener('click', () => {
+            document.getElementById('reportStep1b').classList.remove('active');
+            document.getElementById('reportStep1').classList.add('active');
+            
+            document.getElementById('step2').classList.remove('active');
+            document.getElementById('step1').classList.add('active');
+            document.getElementById('step1').classList.remove('completed');
+            
+            startQRScanner('qr-scanner', 'report');
+        });
+        backToQRBtn.__reportBound = true;
+    }
+
+    // Step 1b: Pataka selection dropdown
+    const patakaSelect = document.getElementById('patakaSelect');
+    const confirmBtn = document.getElementById('confirmPatakaBtn');
+    if (patakaSelect && confirmBtn && !patakaSelect.__reportBound) {
+        patakaSelect.addEventListener('change', (e) => {
+            const cupboardId = parseInt(e.target.value);
+            
+            if (cupboardId) {
+                state.selectedPataka = state.cupboards.find(p => p.id === cupboardId);
+                confirmBtn.disabled = false;
+            } else {
+                state.selectedPataka = null;
+                confirmBtn.disabled = true;
             }
         });
+        
+        confirmBtn.addEventListener('click', () => {
+            if (state.selectedPataka) {
+                proceedToReportDetails();
+            }
+        });
+        
+        patakaSelect.__reportBound = true;
     }
-});
 
-// Report: Step 2 Back / Continue
-(function wireReportStep2Nav(){
-  const back = document.getElementById('reportPhotoBackBtn') || document.getElementById('reportBackBtn');
-  if (back && !back.__bound) {
-    back.addEventListener('click', () => {
-      document.getElementById('reportStep2')?.classList.remove('active');
-      document.getElementById('reportStep1')?.classList.add('active');
-      document.getElementById('step2')?.classList.remove('active');
-      document.getElementById('step1')?.classList.add('active');
-      try { startQRScanner('qr-scanner', 'report'); } catch {}
-    });
-    back.__bound = true;
-  }
+    // Step 2: Photo buttons
+    const takePhotoBtn = document.getElementById('takePhotoBtn');
+    const selectPhotoBtn = document.getElementById('selectPhotoBtn');
+    const takePhotoInput = document.getElementById('takePhotoInput');
+    const selectPhotoInput = document.getElementById('selectPhotoInput');
+    
+    if (takePhotoBtn && !takePhotoBtn.__reportBound) {
+        takePhotoBtn.addEventListener('click', () => takePhotoInput.click());
+        takePhotoBtn.__reportBound = true;
+    }
+    
+    if (selectPhotoBtn && !selectPhotoBtn.__reportBound) {
+        selectPhotoBtn.addEventListener('click', () => selectPhotoInput.click());
+        selectPhotoBtn.__reportBound = true;
+    }
+    
+    if (takePhotoInput && !takePhotoInput.__reportBound) {
+        takePhotoInput.addEventListener('change', (e) => 
+            handlePhotoSelection(e, 'photoPreview', 'photoPreviewContainer')
+        );
+        takePhotoInput.__reportBound = true;
+    }
+    
+    if (selectPhotoInput && !selectPhotoInput.__reportBound) {
+        selectPhotoInput.addEventListener('change', (e) => 
+            handlePhotoSelection(e, 'photoPreview', 'photoPreviewContainer')
+        );
+        selectPhotoInput.__reportBound = true;
+    }
 
-  const cont = document.getElementById('reportPhotoNextBtn') || document.getElementById('reportContinueBtn');
-  if (cont && !cont.__bound) {
-    cont.addEventListener('click', (e) => {
-      e.preventDefault();
-      // This should proceed to details/summary depending on your original flow
-      if (typeof proceedToReportDetails === 'function') {
-        proceedToReportDetails();
-      }
-    });
-    cont.__bound = true;
-  }
-})();
+    // Step 2: Continue to contact button
+    const continueBtn = document.getElementById('continueToContactBtn');
+    if (continueBtn && !continueBtn.__reportBound) {
+        continueBtn.addEventListener('click', () => {
+            const description = document.getElementById('issueDescription').value.trim();
+            const hasPhoto = state.actionData.photo;
+            
+            if (!description && !hasPhoto) {
+                document.getElementById('reportValidation').classList.remove('hidden');
+                return;
+            }
+            
+            document.getElementById('reportValidation').classList.add('hidden');
+            state.actionData.description = description;
+            
+            document.getElementById('reportStep2').classList.remove('active');
+            document.getElementById('reportStep3').classList.add('active');
+            
+            document.getElementById('step2').classList.remove('active');
+            document.getElementById('step2').classList.add('completed');
+            document.getElementById('step3').classList.add('active');
+        });
+        continueBtn.__reportBound = true;
+    }
+
+    // Step 2: Back button
+    const backToSelectionBtn = document.getElementById('backToSelectionBtn');
+    if (backToSelectionBtn && !backToSelectionBtn.__reportBound) {
+        backToSelectionBtn.addEventListener('click', () => {
+            document.getElementById('reportStep2').classList.remove('active');
+            document.getElementById('reportStep1').classList.add('active');
+            
+            document.getElementById('step2').classList.remove('active');
+            document.getElementById('step1').classList.add('active');
+            document.getElementById('step1').classList.remove('completed');
+            
+            startQRScanner('qr-scanner', 'report');
+        });
+        backToSelectionBtn.__reportBound = true;
+    }
+
+    // Step 3: Submit report button (CRITICAL - Backend integration!)
+    const submitBtn = document.getElementById('submitReportBtn');
+    if (submitBtn && !submitBtn.__reportBound) {
+        submitBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            submitBtn.disabled = true;
+            const original = submitBtn.textContent;
+            submitBtn.textContent = 'Submitting…';
+            
+            try { 
+                await submitReportIssueFromApp(); 
+            } catch (err) {
+                console.error('Submit failed:', err);
+            } finally { 
+                submitBtn.disabled = false; 
+                submitBtn.textContent = original; 
+            }
+        });
+        submitBtn.__reportBound = true;
+    }
+
+    // Step 3: Back button
+    const backToDetailsBtn = document.getElementById('backToDetailsBtn');
+    if (backToDetailsBtn && !backToDetailsBtn.__reportBound) {
+        backToDetailsBtn.addEventListener('click', () => {
+            document.getElementById('reportStep3').classList.remove('active');
+            document.getElementById('reportStep2').classList.add('active');
+            
+            document.getElementById('step3').classList.remove('active');
+            document.getElementById('step2').classList.add('active');
+            document.getElementById('step2').classList.remove('completed');
+        });
+        backToDetailsBtn.__reportBound = true;
+    }
+
+    // Success: Back to Map button
+    const backToMapBtn = document.getElementById('backToMapBtn');
+    if (backToMapBtn && !backToMapBtn.__reportBound) {
+        backToMapBtn.addEventListener('click', () => {
+            setActiveTab('find');
+            switchToMap();
+        });
+        backToMapBtn.__reportBound = true;
+    }
+}
+
+// Initialize event listeners when module loads
+setupReportEventListeners();
+
+// Expose functions globally for QR scanner callback
+window.proceedToReportDetails = proceedToReportDetails;
+window.resetReportFlow = resetReportFlow;
+
 // Export for ES6 modules
 export {
     resetReportFlow,
     proceedToReportDetails,
-    setupReportEventListeners
+    setupReportEventListeners,
+    submitReportIssueFromApp
 };
