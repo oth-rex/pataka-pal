@@ -465,3 +465,9 @@ function setupDonateEventListeners() {
     }
   };
 })();
+// Export for ES6 modules
+export {
+    resetDonateFlow,
+    proceedToDonatePhoto,
+    setupDonateEventListeners
+};

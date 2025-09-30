@@ -1,3 +1,19 @@
+// Import from config.js
+import { 
+    API_BASE_URL,
+    cupboards, 
+    isLoading, 
+    map, 
+    markersLayer, 
+    userLocation,
+    getItemEmoji
+} from './config.js';
+
+// Import from app-core.js
+import {
+    showCustomModal
+} from './app-core.js';
+
 // Map and data functions
 async function initializeMap() {
     try {
@@ -380,3 +396,13 @@ async function showPatakaDetailsByName(patakaName) {
         console.warn('Pataka card not found for name:', patakaName);
     }
 }
+// Export for ES6 modules
+export {
+    initializeMap,
+    fetchCupboards,
+    loadPatakasOnMap,
+    renderCupboards,
+    createCupboardCard,
+    toggleInventoryDetail,
+    showPatakaDetailsByName
+};

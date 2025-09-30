@@ -366,3 +366,9 @@ document.addEventListener('DOMContentLoaded', function() {
     cont.__bound = true;
   }
 })();
+// Export for ES6 modules
+export {
+    resetReportFlow,
+    proceedToReportDetails,
+    setupReportEventListeners
+};

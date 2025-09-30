@@ -1,3 +1,35 @@
+// Import from config.js
+import { 
+    API_BASE_URL,
+    cupboards, 
+    isLoading, 
+    map, 
+    markersLayer, 
+    userLocation, 
+    qrScanner, 
+    selectedPataka, 
+    currentAction, 
+    actionData,
+    getItemEmoji,
+    getStatusColor
+} from './config.js';
+
+// Import from map-functions.js
+import {
+    initializeMap,
+    fetchCupboards,
+    loadPatakasOnMap,
+    renderCupboards
+} from './map-functions.js';
+
+// Import from qr-scanner.js
+import {
+    stopQRScanner
+} from './qr-scanner.js';
+
+
+// Rest of app-core.js code follows...
+
 // Utility functions
 function getUserLocation() {
     return new Promise((resolve, reject) => {
@@ -194,9 +226,10 @@ function setupEventListeners() {
 
 
     // Flow event listeners - will be defined in workflow files
-    setupDonateEventListeners();
-    setupTakeEventListeners();
-    setupReportEventListeners();
+    // TODO Day 2-4: Import and call these properly
+    // setupDonateEventListeners();
+    // setupTakeEventListeners();
+    // setupReportEventListeners();
 }
 
 function handleSearch(e) {
@@ -247,3 +280,20 @@ setInterval(async () => {
         console.log('⚠️ Database ping failed:', error.message);
     }
 }, 10 * 60 * 1000); // 10 minutes
+
+// Export for ES6 modules
+export {
+    getUserLocation,
+    calculateDistance,
+    formatLastUpdated,
+    showCustomModal,
+    hideCustomModal,
+    switchToMap,
+    switchToList,
+    switchToDonate,
+    switchToTake,
+    switchToReport,
+    hideAllViews,
+    setActiveTab,
+    handleSearch
+};

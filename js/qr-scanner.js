@@ -49,3 +49,9 @@ function handleQRScanResult(result, action) {
         showCustomModal('QR Code Error', 'QR code format not recognized. Please scan a valid Pataka QR code or use manual selection.');
     }
 }
+// Export for ES6 modules
+export {
+    startQRScanner,
+    stopQRScanner,
+    handleQRScanResult
+};

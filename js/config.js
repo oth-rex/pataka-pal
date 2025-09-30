@@ -1,19 +1,21 @@
-// Configuration
+// Mutable application state (single object for ES6 module compatibility)
+const state = {
+    cupboards: [],
+    isLoading: false,
+    map: null,
+    markersLayer: null,
+    userLocation: null,
+    qrScanner: null,
+    selectedPataka: null,
+    currentAction: null,
+    actionData: {},
+    dataLoadAttempts: 0,
+    maxRetries: 3
+};
+
+// Configuration constants
 const API_BASE_URL = 'https://oth-pataka-api-facpcna9c9hjc5dh.australiaeast-01.azurewebsites.net/api';
 const COMPUTER_VISION_ENDPOINT = 'https://communitypantry-vision.cognitiveservices.azure.com/';
-
-// Global state
-let cupboards = [];
-let isLoading = false;
-let map = null;
-let markersLayer = null;
-let userLocation = null;
-let qrScanner = null;
-let selectedPataka = null;
-let currentAction = null;
-let actionData = {};
-let dataLoadAttempts = 0;
-let maxRetries = 3;
 
 // Food emoji mapping
 const emojiMap = {
@@ -49,3 +51,14 @@ function getStatusColor(status) {
         default: return '#289DA7';
     }
 }
+
+// Export for ES6 modules
+export { 
+    state,  // ← Add this!
+    API_BASE_URL,
+    COMPUTER_VISION_ENDPOINT,
+    emojiMap,
+    foodWhitelist,
+    getItemEmoji,
+    getStatusColor
+};

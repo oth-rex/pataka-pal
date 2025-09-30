@@ -292,3 +292,9 @@ function setupTakeEventListeners() {
     btn.__bound = true;
   }
 })();
+// Export for ES6 modules
+export {
+    resetTakeFlow,
+    proceedToTakePhoto,
+    setupTakeEventListeners
+};
