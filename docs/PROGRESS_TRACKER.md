@@ -79,10 +79,10 @@ Rex needs the COMPLETE revised app-core.js file with state object pattern.
   - Correct: `<script src="js/donate-workflow.js"></script>`
   
 - [ ] Add `type="module"` to ALL script tags in index.html
-  - [ ] config.js
-  - [ ] app-core.js
+  - [x] config.js
+  - [x] app-core.js
   - [ ] qr-scanner.js
-  - [ ] map-functions.js
+  - [x] map-functions.js
   - [ ] photo-utils.js
   - [ ] donate-workflow.js
   - [ ] take-workflow.js
