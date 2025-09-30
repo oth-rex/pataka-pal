@@ -1,4 +1,5 @@
 // Mutable application state (single object for ES6 module compatibility)
+// Mutable application state (single object for ES6 module compatibility)
 const state = {
     cupboards: [],
     isLoading: false,
@@ -51,10 +52,9 @@ function getStatusColor(status) {
         default: return '#289DA7';
     }
 }
-
 // Export for ES6 modules
 export { 
-    state,  // ← Add this!
+    state,  // ← The state object!
     API_BASE_URL,
     COMPUTER_VISION_ENDPOINT,
     emojiMap,

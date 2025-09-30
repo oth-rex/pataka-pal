@@ -1,15 +1,8 @@
 // Import from config.js
+// Import from config.js
 import { 
+    state,  // ← Import the state object!
     API_BASE_URL,
-    cupboards, 
-    isLoading, 
-    map, 
-    markersLayer, 
-    userLocation, 
-    qrScanner, 
-    selectedPataka, 
-    currentAction, 
-    actionData,
     getItemEmoji,
     getStatusColor
 } from './config.js';
