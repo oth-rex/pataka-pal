@@ -1,0 +1,15 @@
+# Private documentation - not for public viewing
+INSTANT_ONBOARD.md
+PROGRESS_TRACKER.md
+TESTING_LOG.md
+
+# Private docs folder (if you have one)
+docs/
+
+# Word documents with sensitive info
+*.docx
+
+# Other common private files
+*.log
+.env
+*.env.local
