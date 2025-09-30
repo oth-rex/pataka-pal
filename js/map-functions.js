@@ -1,11 +1,7 @@
 // Import from config.js
 import { 
+    state,  // ← Import state object instead of individual variables
     API_BASE_URL,
-    cupboards, 
-    isLoading, 
-    map, 
-    markersLayer, 
-    userLocation,
     getItemEmoji
 } from './config.js';
 
@@ -22,7 +18,7 @@ async function initializeMap() {
         mapLoading.classList.remove('hidden');
 
         // Initialize Leaflet map with better error handling
-        map = L.map('azureMap', {
+        state.map = L.map('azureMap', {
             maxZoom: 18,
             minZoom: 3
         }).setView([-39.057, 174.075], 12);
@@ -45,7 +41,7 @@ async function initializeMap() {
             }, 1000);
         });
 
-        tileLayer.addTo(map);
+        tileLayer.addTo(state.map);
 
         // Add marker click event handler
         document.getElementById('azureMap').addEventListener('click', (e) => {
@@ -71,14 +67,14 @@ async function initializeMap() {
 }
 
 async function fetchCupboards() {
-    if (isLoading) return cupboards;
+    if (state.isLoading) return state.cupboards;
     
     try {
-        isLoading = true;
-        dataLoadAttempts++;
+        state.isLoading = true;
+        state.dataLoadAttempts++;
         
         // Show additional loading info for long delays
-        if (dataLoadAttempts === 1) {
+        if (state.dataLoadAttempts === 1) {
             const loadingInfo = document.getElementById('loadingInfo');
             if (loadingInfo) {
                 loadingInfo.classList.remove('hidden');
@@ -87,7 +83,7 @@ async function fetchCupboards() {
         
         await getUserLocation();
         
-        console.log(`Attempting to fetch cupboards (attempt ${dataLoadAttempts})...`);
+        console.log(`Attempting to fetch cupboards (attempt ${state.dataLoadAttempts})...`);
         const response = await fetch(`${API_BASE_URL}/getCupboards`, {
             timeout: 60000, // 60 second timeout
         });
@@ -99,12 +95,12 @@ async function fetchCupboards() {
         const data = await response.json();
         console.log('Successfully fetched cupboards:', data);
         
-        cupboards = data.map(pataka => ({
+        state.cupboards = data.map(pataka => ({
             id: pataka.id,
             name: pataka.name,
             address: pataka.address,
-            distance: userLocation ? 
-                calculateDistance(userLocation.lat, userLocation.lng, pataka.latitude, pataka.longitude) : 
+            distance: state.userLocation ? 
+                calculateDistance(state.userLocation.lat, state.userLocation.lng, pataka.latitude, pataka.longitude) : 
                 'N/A',
             status: pataka.status,
             lastUpdated: formatLastUpdated(pataka.lastUpdated),
@@ -123,14 +119,14 @@ async function fetchCupboards() {
             loadingInfo.classList.add('hidden');
         }
         
-        return cupboards;
+        return state.cupboards;
         
     } catch (error) {
         console.error('Error fetching cupboards:', error);
         
         // Retry logic for failed requests
-        if (dataLoadAttempts < maxRetries) {
-            console.log(`Retrying in 5 seconds... (${dataLoadAttempts}/${maxRetries})`);
+        if (state.dataLoadAttempts < state.maxRetries) {
+            console.log(`Retrying in 5 seconds... (${state.dataLoadAttempts}/${state.maxRetries})`);
             setTimeout(() => {
                 fetchCupboards();
             }, 5000);
@@ -152,10 +148,10 @@ async function fetchCupboards() {
             listContainer.appendChild(errorDiv);
         }
         
-        cupboards = [];
-        return cupboards;
+        state.cupboards = [];
+        return state.cupboards;
     } finally {
-        isLoading = false;
+        state.isLoading = false;
     }
 }
 
@@ -165,21 +161,21 @@ async function loadPatakasOnMap() {
         await fetchCupboards();
 
         // Create/clear a dedicated layer for markers
-        if (!markersLayer) {
-            markersLayer = L.layerGroup().addTo(map);
+        if (!state.markersLayer) {
+            state.markersLayer = L.layerGroup().addTo(state.map);
         } else {
-            markersLayer.clearLayers();
+            state.markersLayer.clearLayers();
         }
 
         const bounds = [];
 
-        (cupboards || []).forEach(pataka => {
+        (state.cupboards || []).forEach(pataka => {
             if (typeof pataka.latitude !== "number" || typeof pataka.longitude !== "number") return;
 
             // Create marker with better styling
             const marker = L.marker([pataka.latitude, pataka.longitude], {
                 title: pataka.name
-            }).addTo(markersLayer);
+            }).addTo(state.markersLayer);
             
             bounds.push([pataka.latitude, pataka.longitude]);
 
@@ -204,20 +200,20 @@ async function loadPatakasOnMap() {
 
         // Fit map to show all markers if any exist
         if (bounds.length > 0) {
-            map.fitBounds(bounds, { 
+            state.map.fitBounds(bounds, { 
                 padding: [20, 20],
                 maxZoom: 15 
             });
         }
 
-        console.log(`Loaded ${cupboards.length} pataka markers on map`);
+        console.log(`Loaded ${state.cupboards.length} pataka markers on map`);
 
     } catch (error) {
         console.error('Error loading map locations:', error);
     }
 }
 
-function renderCupboards(filteredCupboards = cupboards) {
+function renderCupboards(filteredCupboards = state.cupboards) {
     const listContainer = document.getElementById('listView');
     const loading = document.getElementById('loading');
     const loadingInfo = document.getElementById('loadingInfo');
@@ -253,11 +249,11 @@ function renderCupboards(filteredCupboards = cupboards) {
 function createCupboardCard(pataka) {
     const card = document.createElement('div');
     card.className = 'cupboard-card';
-    card.dataset.patakaName = pataka.name; // so we can find this card later
+    card.dataset.patakaName = pataka.name;
 
-    // --- Derive status from inventory presence ---
+    // Derive status from inventory presence
     const hasInventoryArray = Array.isArray(pataka.inventory);
-    let derivedStatus = 'well'; // default
+    let derivedStatus = 'well';
     if (!hasInventoryArray) {
         derivedStatus = 'unknown';
     } else if (pataka.inventory.length === 0) {
@@ -290,7 +286,6 @@ function createCupboardCard(pataka) {
             </div>
         </div>
         ${
-            // Preview logic
             hasInventoryArray
                 ? (previewItems.length > 0
                     ? `<div class="food-preview">
@@ -312,7 +307,6 @@ function createCupboardCard(pataka) {
         }
     `;
 
-    // Clicking the card toggles the detail section
     card.addEventListener('click', () => {
         toggleInventoryDetail(card, pataka);
     });
@@ -365,30 +359,29 @@ function toggleInventoryDetail(card, pataka) {
 }
 
 async function showPatakaDetailsByName(patakaName) {
-    // Go to List view so the card is visible
+    // Import switchToList from app-core.js
+    const { switchToList } = await import('./app-core.js');
+    
     await switchToList();
-    // Find the pataka object and its card
-    const pataka = (cupboards || []).find(p => p.name === patakaName);
+    
+    const pataka = (state.cupboards || []).find(p => p.name === patakaName);
     const cards = document.querySelectorAll('.cupboard-card');
     const card = Array.from(cards).find(c => c.dataset.patakaName === patakaName);
+    
     if (card && pataka) {
         card.scrollIntoView({ behavior: 'smooth', block: 'start' });
         
-        // Move the selected card to the very top of the list
         const listContainer = document.getElementById('listView');
         if (listContainer && card.parentElement === listContainer) {
             listContainer.insertBefore(card, listContainer.firstChild);
         }
 
-        // Apply a visible yellow highlight for a few seconds
         card.classList.add('selected-highlight');
         setTimeout(() => card.classList.remove('selected-highlight'), 4500);
         
-        // highlight the card for a moment
         card.classList.add('highlighted');
         setTimeout(() => card.classList.remove('highlighted'), 2500);
         
-        // ensure only one detail block is open
         const existing = card.querySelector('.inventory-detail');
         if (existing) existing.remove();
         toggleInventoryDetail(card, pataka);
@@ -396,6 +389,43 @@ async function showPatakaDetailsByName(patakaName) {
         console.warn('Pataka card not found for name:', patakaName);
     }
 }
+
+// Helper functions that map-functions.js needs from app-core.js
+// We'll import these properly, but for now provide stubs
+function getUserLocation() {
+    // This is actually defined in app-core.js, but we need it here
+    // Will be properly handled when we fix circular imports
+    return Promise.resolve(state.userLocation || { lat: -39.0579, lng: 174.0806 });
+}
+
+function calculateDistance(lat1, lng1, lat2, lng2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+        Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const distance = R * c;
+    return distance < 1 ? Math.round(distance * 1000) + 'm' : distance.toFixed(1) + 'km';
+}
+
+function formatLastUpdated(timestamp) {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    
+    if (diffHours > 0) {
+        return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    } else if (diffMins > 0) {
+        return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+    } else {
+        return 'Just now';
+    }
+}
+
 // Export for ES6 modules
 export {
     initializeMap,

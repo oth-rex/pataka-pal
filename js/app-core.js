@@ -1,7 +1,6 @@
 // Import from config.js
-// Import from config.js
 import { 
-    state,  // ← Import the state object!
+    state,  // ← State object with all mutable properties
     API_BASE_URL,
     getItemEmoji,
     getStatusColor
@@ -17,11 +16,9 @@ import {
 
 // Import from qr-scanner.js
 import {
-    stopQRScanner
+    stopQRScanner,
+    startQRScanner
 } from './qr-scanner.js';
-
-
-// Rest of app-core.js code follows...
 
 // Utility functions
 function getUserLocation() {
@@ -33,13 +30,13 @@ function getUserLocation() {
 
         navigator.geolocation.getCurrentPosition(
             (position) => {
-                userLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
-                resolve(userLocation);
+                state.userLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
+                resolve(state.userLocation);
             },
             (error) => {
                 console.warn('Geolocation failed, using default location:', error);
-                userLocation = { lat: -39.0579, lng: 174.0806 };
-                resolve(userLocation);
+                state.userLocation = { lat: -39.0579, lng: 174.0806 };
+                resolve(state.userLocation);
             },
             { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
         );
@@ -142,7 +139,7 @@ async function switchToMap() {
     const searchInput = document.getElementById('searchInput');
     searchInput.value = '';
     
-    if (!map) {
+    if (!state.map) {
         await initializeMap();
     } else {
         await loadPatakasOnMap();
@@ -167,26 +164,41 @@ async function switchToList() {
 }
 
 function switchToDonate() {
-    currentAction = 'donate';
+    state.currentAction = 'donate';
     hideAllViews();
     document.getElementById('donateView').classList.remove('hidden');
-    resetDonateFlow();
+    
+    // Reset flow - will be imported from donate-workflow.js in Step 3
+    if (typeof window.resetDonateFlow === 'function') {
+        window.resetDonateFlow();
+    }
+    
     startQRScanner('donate-qr-scanner', 'donate');
 }
 
 function switchToTake() {
-    currentAction = 'take';
+    state.currentAction = 'take';
     hideAllViews();
     document.getElementById('takeView').classList.remove('hidden');
-    resetTakeFlow();
+    
+    // Reset flow - will be imported from take-workflow.js in Step 4
+    if (typeof window.resetTakeFlow === 'function') {
+        window.resetTakeFlow();
+    }
+    
     startQRScanner('take-qr-scanner', 'take');
 }
 
 function switchToReport() {
-    currentAction = 'report';
+    state.currentAction = 'report';
     hideAllViews();
     document.getElementById('reportView').classList.remove('hidden');
-    resetReportFlow();
+    
+    // Reset flow - will be imported from report-workflow.js in Step 5
+    if (typeof window.resetReportFlow === 'function') {
+        window.resetReportFlow();
+    }
+    
     startQRScanner('qr-scanner', 'report');
 }
 
@@ -215,27 +227,21 @@ function setupEventListeners() {
     // Search functionality
     document.getElementById('searchInput').addEventListener('input', handleSearch);
 
-    // Photo handlers - will be defined in workflow files
-
-
-    // Flow event listeners - will be defined in workflow files
-    // TODO Day 2-4: Import and call these properly
-    // setupDonateEventListeners();
-    // setupTakeEventListeners();
-    // setupReportEventListeners();
+    // Note: Photo handlers and workflow event listeners are in respective workflow files
+    // These will be properly wired in Steps 3-7
 }
 
 function handleSearch(e) {
     const searchTerm = e.target.value.toLowerCase().trim();
     
     if (searchTerm === '') {
-        renderCupboards(cupboards);
+        renderCupboards(state.cupboards);
         // Reset map if in map view
         if (!document.getElementById('mapView').classList.contains('hidden')) {
             loadPatakasOnMap();
         }
     } else {
-        const filteredCupboards = cupboards.filter(pataka => {
+        const filteredCupboards = state.cupboards.filter(pataka => {
             const nameMatch = pataka.name.toLowerCase().includes(searchTerm);
             const addressMatch = pataka.address.toLowerCase().includes(searchTerm);
             const inventoryMatch = pataka.inventory && pataka.inventory.some(item => 
