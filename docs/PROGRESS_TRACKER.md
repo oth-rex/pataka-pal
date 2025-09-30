@@ -59,6 +59,19 @@
 
 ## 🔄 IN PROGRESS
 
+### **DAY 0.5: Infrastructure Setup** (September 30, 2025) 
+**Duration:** 15 minutes  
+**Status:** IN PROGRESS
+
+- [ ] Install Git on Windows
+- [ ] Clone GitHub repo locally
+- [ ] Verify auto-deployment works (push to main = live deployment)
+- [ ] Create `day1-module-foundation` branch
+- [ ] **Decision:** Stay on GitHub (don't migrate to Azure DevOps Repos)
+- [ ] **Decision:** Defer custom domain until post-demo
+
+**Git Commit:** "Initial local setup complete"
+
 ### **DAY 1: Module Foundation** (September 30, 2025) 🟡
 **Estimated Duration:** 2-3 hours  
 **Status:** IN PROGRESS  
