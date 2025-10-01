@@ -22,7 +22,7 @@ module.exports = async function (context, req) {
 
     try {
         // Parse request data
-        let patakaId, userId, items, comment, photoFile;
+        let patakaId, userId, items, comment, photoFile, isTest = false;
 
         if (req.headers['content-type']?.includes('multipart/form-data')) {
             // Parse multipart form data (with photo)
@@ -38,6 +38,8 @@ module.exports = async function (context, req) {
                     items = JSON.parse(part.data.toString());
                 } else if (part.name === 'comment') {
                     comment = part.data.toString();
+                } else if (part.name === 'isTest') {
+                    isTest = part.data.toString() === 'true';
                 } else if (part.name === 'photo') {
                     photoFile = {
                         data: part.data,
@@ -52,6 +54,7 @@ module.exports = async function (context, req) {
             userId = req.body.userId;
             items = req.body.items;
             comment = req.body.comment;
+            isTest = req.body.isTest === true || req.body.isTest === 'true';
         }
 
         // Validation
@@ -66,6 +69,24 @@ module.exports = async function (context, req) {
 
         // Connect to database
         const pool = await sql.connect(process.env.SQL_CONN_STRING);
+
+        // Verify pātaka exists and get its IsTest status
+        const patakaCheck = await pool.request()
+            .input('patakaId', sql.Int, patakaId)
+            .query('SELECT PatakaId, IsTest FROM Pataka WHERE PatakaId = @patakaId');
+        
+        if (patakaCheck.recordset.length === 0) {
+            context.res.status = 404;
+            context.res.body = { ok: false, error: 'Pātaka not found' };
+            await pool.close();
+            return;
+        }
+
+        // Use pātaka's IsTest status (override user input for safety)
+        const patakaIsTest = patakaCheck.recordset[0].IsTest;
+        isTest = patakaIsTest || isTest; // Use pātaka's setting, or user's if pātaka is null
+
+        context.log(`Processing donation for pātaka ${patakaId}, IsTest: ${isTest}`);
 
         // Handle user ID (create if new)
         let finalUserId;
@@ -102,13 +123,14 @@ module.exports = async function (context, req) {
             finalUserId = newUserId;
         }
 
-        // Upload photo if provided
+        // Upload photo if provided (use test container for test transactions)
         let photoUrl = null;
         if (photoFile) {
             const blobServiceClient = BlobServiceClient.fromConnectionString(
                 process.env.BLOB_CONN_STRING
             );
-            const containerClient = blobServiceClient.getContainerClient('donation-photos');
+            const containerName = isTest ? 'donation-photos-test' : 'donation-photos';
+            const containerClient = blobServiceClient.getContainerClient(containerName);
             
             // Create container if it doesn't exist
             await containerClient.createIfNotExists({ access: 'blob' });
@@ -139,12 +161,13 @@ module.exports = async function (context, req) {
             // Get or create FoodCategory
             let categoryId = 1; // Default to "Other"
             
-            // Try to match category based on item name
+            // Try to match category based on item name (parameterized to prevent SQL injection)
             const categoryResult = await pool.request()
+                .input('searchTerm', sql.NVarChar, `%${item.name.split(' ')[0]}%`)
                 .query(`
                     SELECT TOP 1 FoodCategoryId 
                     FROM FoodCategory 
-                    WHERE Name LIKE '%${item.name.split(' ')[0]}%'
+                    WHERE Name LIKE @searchTerm
                 `);
             
             if (categoryResult.recordset.length > 0) {
@@ -192,7 +215,7 @@ module.exports = async function (context, req) {
                 foodItemId = insertResult.recordset[0].FoodItemId;
             }
 
-            // Create FoodTransaction record
+            // Create FoodTransaction record (WITH IsTest flag)
             const transactionResult = await pool.request()
                 .input('patakaId', sql.Int, patakaId)
                 .input('userId', sql.NVarChar, finalUserId)
@@ -203,13 +226,14 @@ module.exports = async function (context, req) {
                 .input('comment', sql.NVarChar, comment || null)
                 .input('photoUrl', sql.NVarChar, photoUrl || null)
                 .input('timestamp', sql.DateTime, timestamp)
+                .input('isTest', sql.Bit, isTest)
                 .query(`
                     INSERT INTO FoodTransaction 
                     (PatakaId, UserId, FoodItemId, FoodCategoryId, TransactionTypeId, 
-                     Quantity, Comment, PhotoUrl, TransactionDate)
+                     Quantity, Comment, PhotoUrl, TransactionDate, IsTest)
                     OUTPUT INSERTED.FoodTransactionId
                     VALUES (@patakaId, @userId, @foodItemId, @categoryId, @transactionTypeId,
-                            @quantity, @comment, @photoUrl, @timestamp)
+                            @quantity, @comment, @photoUrl, @timestamp, @isTest)
                 `);
             
             transactionIds.push(transactionResult.recordset[0].FoodTransactionId);
@@ -234,7 +258,8 @@ module.exports = async function (context, req) {
             userId: finalUserId,
             transactionIds: transactionIds,
             photoUrl: photoUrl,
-            itemsProcessed: transactionIds.length
+            itemsProcessed: transactionIds.length,
+            isTest: isTest
         };
 
     } catch (error) {
