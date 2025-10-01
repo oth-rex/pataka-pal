@@ -375,14 +375,78 @@ function setupDonateEventListeners() {
     }
 
     // Step 4: Submit button
-    const submitBtn = document.getElementById('donateSubmitBtn');
-    if (submitBtn && !submitBtn.__donateBound) {
-        submitBtn.addEventListener('click', () => {
-            console.log('Donation submitted');
+const submitBtn = document.getElementById('donateSubmitBtn');
+if (submitBtn && !submitBtn.__donateBound) {
+    submitBtn.addEventListener('click', async () => {
+        // Disable button during submission
+        submitBtn.disabled = true;
+        const originalText = submitBtn.textContent;
+        submitBtn.textContent = 'Submitting...';
+        
+        try {
+            // Gather data
+            const patakaId = state.selectedPataka.id;
+            const comment = document.getElementById('donateComment').value.trim();
+            const items = state.actionData.detectedItems || [];
+            const photo = state.actionData.photo;
+            
+            // Validate we have items
+            if (items.length === 0) {
+                showCustomModal('No Items', 'Please add at least one item to donate');
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+                return;
+            }
+            
+            // Prepare request
+            let response;
+            
+            if (photo) {
+                // Multipart submission (with photo)
+                const formData = new FormData();
+                formData.append('patakaId', patakaId);
+                formData.append('items', JSON.stringify(items));
+                if (comment) formData.append('comment', comment);
+                formData.append('photo', photo);
+                // Note: isTest will be determined by pātaka's IsTest flag in backend
+                
+                response = await fetch(API_BASE_URL + '/SubmitDonation', {
+                    method: 'POST',
+                    body: formData
+                });
+            } else {
+                // JSON submission (no photo)
+                response = await fetch(API_BASE_URL + '/SubmitDonation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        patakaId: patakaId,
+                        items: items,
+                        comment: comment || null
+                    })
+                });
+            }
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || `HTTP ${response.status}`);
+            }
+            
+            const result = await response.json();
+            console.log('✅ Donation successful:', result);
+            
+            // Show success screen
             showDonateSuccess();
-        });
-        submitBtn.__donateBound = true;
-    }
+            
+        } catch (error) {
+            console.error('❌ Donation failed:', error);
+            showCustomModal('Submission Failed', error.message || 'Please try again');
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+        }
+    });
+    submitBtn.__donateBound = true;
+}
 
     // Step 4: Back button
     const commentBackBtn = document.getElementById('donateCommentBackBtn');
