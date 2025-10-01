@@ -303,8 +303,13 @@ function setupReportEventListeners() {
         submitBtn.addEventListener('click', async (e) => {
             e.preventDefault();
             submitBtn.disabled = true;
-            const original = submitBtn.textContent;
-            submitBtn.textContent = 'Submitting…';
+const original = submitBtn.textContent;
+submitBtn.innerHTML = `
+    <div>Submitting your report - this may take up to 1 minute and you'll get a message when it's done</div>
+    <div style="font-size:0.8rem;margin-top:4px;">
+        Thank you for taking the time to help! ❤️
+    </div>
+`;
             
             try { 
                 await submitReportIssueFromApp(); 

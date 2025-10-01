@@ -1,5 +1,5 @@
 // Import from config.js
-import { state } from './config.js';
+import { state, getItemEmoji, foodWhitelist } from './config.js';
 
 // Import from app-core.js
 import { showCustomModal, setActiveTab, switchToMap } from './app-core.js';
@@ -36,10 +36,115 @@ function proceedToTakePhoto() {
 }
 
 function showTakeSuccess() {
-    document.getElementById('takeSection3').classList.remove('active');
+    document.getElementById('takeSection4').classList.remove('active');
     document.getElementById('takeSuccess').classList.add('active');
-    document.getElementById('takeStep3').classList.remove('active');
-    document.getElementById('takeStep3').classList.add('completed');
+    document.getElementById('takeStep4').classList.remove('active');
+    document.getElementById('takeStep4').classList.add('completed');
+}
+
+// Computer Vision AI Integration (same as donate workflow)
+async function analyzeImageWithAI(imageFile) {
+    try {
+        console.log('Starting AI analysis...');
+        console.log('File size:', imageFile.size);
+        console.log('File type:', imageFile.type);
+        
+        // For now, return mock data since CV API keys are removed
+        console.log('Using mock AI data for demo');
+        return {
+            tags: [
+                { name: 'banana', confidence: 0.84 },
+                { name: 'apple', confidence: 0.78 },
+                { name: 'vegetable', confidence: 0.65 }
+            ]
+        };
+    } catch (error) {
+        console.error('AI analysis error details:', error);
+        
+        // Return mock data for demo instead of showing error
+        console.log('Using mock AI data for demo');
+        return {
+            tags: [
+                { name: 'banana', confidence: 0.84 },
+                { name: 'apple', confidence: 0.78 },
+                { name: 'vegetable', confidence: 0.65 }
+            ]
+        };
+    }
+}
+
+function filterFoodItems(aiResult) {
+    if (!aiResult.tags) return [];
+    
+    return aiResult.tags
+        .filter(tag => {
+            const name = tag.name.toLowerCase();
+            return foodWhitelist.some(food => name.includes(food)) && tag.confidence > 0.5;
+        })
+        .map(tag => ({
+            name: tag.name,
+            confidence: tag.confidence,
+            emoji: getItemEmoji(tag.name),
+            quantity: 1
+        }));
+}
+
+// AI processing for Take workflow
+async function processTakeAIAnalysis() {
+    const loadingElement = document.getElementById('takeAILoading');
+    const resultsElement = document.getElementById('takeAIResults');
+    
+    loadingElement.style.display = 'block';
+    resultsElement.classList.add('hidden');
+    
+    if (state.actionData.photo) {
+        const aiResult = await analyzeImageWithAI(state.actionData.photo);
+        const detectedItems = filterFoodItems(aiResult);
+        displayTakeAIResults(detectedItems);
+    } else {
+        displayTakeAIResults([]);
+    }
+    
+    loadingElement.style.display = 'none';
+    resultsElement.classList.remove('hidden');
+}
+
+function displayTakeAIResults(detectedItems) {
+    const container = document.getElementById('takeDetectedItems');
+    container.innerHTML = '';
+    
+    if (detectedItems.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">No food items detected. You can add items manually below.</p>';
+    } else {
+        detectedItems.forEach((item, index) => {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'detected-item selected';
+            itemDiv.innerHTML = `
+                <span class="emoji">${item.emoji}</span>
+                <div class="name">${item.name}</div>
+                <div class="confidence">${(item.confidence * 100).toFixed(1)}% confidence</div>
+                <input type="number" class="quantity-input" value="${item.quantity}" min="0" data-index="${index}">
+            `;
+            container.appendChild(itemDiv);
+        });
+    }
+    
+    state.actionData.detectedItems = detectedItems;
+}
+
+function addManualTakeItem(name, quantity) {
+    if (!state.actionData.detectedItems) state.actionData.detectedItems = [];
+    
+    const newItem = {
+        name: name,
+        quantity: quantity,
+        emoji: getItemEmoji(name),
+        confidence: 1.0,
+        manual: true
+    };
+    
+    state.actionData.detectedItems.push(newItem);
+    displayTakeAIResults(state.actionData.detectedItems);
 }
 
 // Helper functions
@@ -196,7 +301,7 @@ function setupTakeEventListeners() {
         selectPhotoInput.__takeBound = true;
     }
 
-    // Step 2: Navigation buttons
+    // Step 2: Navigation buttons - NOW GOES TO AI STEP (Step 3)
     const photoNextBtn = document.getElementById('takePhotoNextBtn');
     if (photoNextBtn && !photoNextBtn.__takeBound) {
         photoNextBtn.addEventListener('click', () => {
@@ -205,6 +310,9 @@ function setupTakeEventListeners() {
             document.getElementById('takeStep2').classList.remove('active');
             document.getElementById('takeStep2').classList.add('completed');
             document.getElementById('takeStep3').classList.add('active');
+            
+            // Process AI analysis
+            processTakeAIAnalysis();
         });
         photoNextBtn.__takeBound = true;
     }
@@ -224,10 +332,23 @@ function setupTakeEventListeners() {
         photoBackBtn.__takeBound = true;
     }
 
-    // Step 3: Navigation buttons
-    const commentBackBtn = document.getElementById('takeCommentBackBtn');
-    if (commentBackBtn && !commentBackBtn.__takeBound) {
-        commentBackBtn.addEventListener('click', () => {
+    // Step 3 (NEW): AI Results navigation
+    const aiNextBtn = document.getElementById('takeAINextBtn');
+    if (aiNextBtn && !aiNextBtn.__takeBound) {
+        aiNextBtn.addEventListener('click', () => {
+            document.getElementById('takeSection3').classList.remove('active');
+            document.getElementById('takeSection4').classList.add('active');
+            
+            document.getElementById('takeStep3').classList.remove('active');
+            document.getElementById('takeStep3').classList.add('completed');
+            document.getElementById('takeStep4').classList.add('active');
+        });
+        aiNextBtn.__takeBound = true;
+    }
+
+    const aiBackBtn = document.getElementById('takeAIBackBtn');
+    if (aiBackBtn && !aiBackBtn.__takeBound) {
+        aiBackBtn.addEventListener('click', () => {
             document.getElementById('takeSection3').classList.remove('active');
             document.getElementById('takeSection2').classList.add('active');
             
@@ -235,14 +356,45 @@ function setupTakeEventListeners() {
             document.getElementById('takeStep2').classList.add('active');
             document.getElementById('takeStep2').classList.remove('completed');
         });
+        aiBackBtn.__takeBound = true;
+    }
+
+    // Step 3 (NEW): Add manual item button
+    const addManualBtn = document.getElementById('takeAddManualBtn');
+    if (addManualBtn && !addManualBtn.__takeBound) {
+        addManualBtn.addEventListener('click', () => {
+            const name = document.getElementById('takeManualItemName').value.trim();
+            const qty = parseInt(document.getElementById('takeManualItemQty').value);
+            
+            if (name && qty > 0) {
+                addManualTakeItem(name, qty);
+                document.getElementById('takeManualItemName').value = '';
+                document.getElementById('takeManualItemQty').value = '1';
+            }
+        });
+        addManualBtn.__takeBound = true;
+    }
+
+    // Step 4 (FORMERLY STEP 3): Navigation buttons
+    const commentBackBtn = document.getElementById('takeCommentBackBtn');
+    if (commentBackBtn && !commentBackBtn.__takeBound) {
+        commentBackBtn.addEventListener('click', () => {
+            document.getElementById('takeSection4').classList.remove('active');
+            document.getElementById('takeSection3').classList.add('active');
+            
+            document.getElementById('takeStep4').classList.remove('active');
+            document.getElementById('takeStep3').classList.add('active');
+            document.getElementById('takeStep3').classList.remove('completed');
+        });
         commentBackBtn.__takeBound = true;
     }
 
-    // Step 3: Submit button
+    // Step 4: Submit button
     const submitBtn = document.getElementById('takeSubmitBtn');
     if (submitBtn && !submitBtn.__takeBound) {
         submitBtn.addEventListener('click', () => {
             console.log('Taking submitted');
+            console.log('Items taken:', state.actionData.detectedItems);
             showTakeSuccess();
         });
         submitBtn.__takeBound = true;

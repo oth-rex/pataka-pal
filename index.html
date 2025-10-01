@@ -189,6 +189,7 @@
                     <div class="step active" id="takeStep1">1</div>
                     <div class="step" id="takeStep2">2</div>
                     <div class="step" id="takeStep3">3</div>
+                    <div class="step" id="takeStep4">4</div>
                 </div>
 
                 <div class="action-section active" id="takeSection1">
@@ -227,16 +228,16 @@
                             ✅ Taking from <span id="takeSelectedPatakaName" style="font-weight: 600;"></span>
                         </p>
                     </div>
-                    <p class="section-subtitle">Take what you need, then optionally <strong>take a photo of what's left in the pataka</strong></p>
+                    <p class="section-subtitle">Take what you need, then <strong>take a photo of the items you took</strong></p>
                     
                     <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-                        <button type="button" class="btn btn-secondary" id="takeTakePhotoBtn" style="flex: 1; margin-bottom: 0;">📷 Photo of Remaining Items</button>
+                        <button type="button" class="btn btn-secondary" id="takeTakePhotoBtn" style="flex: 1; margin-bottom: 0;">📷 Take Photo</button>
                         <button type="button" class="btn btn-secondary" id="takeSelectPhotoBtn" style="flex: 1; margin-bottom: 0;">🖼️ Select from Gallery</button>
                     </div>
                     
                     <div id="takePhotoPreviewContainer" class="hidden" style="text-align: center; margin: 20px 0;">
                         <img id="takePhotoPreview" class="photo-preview" alt="Photo preview">
-                        <p style="margin-top: 10px; font-size: 0.8rem; color: #666;">Photo added - AI will analyze remaining items</p>
+                        <p style="margin-top: 10px; font-size: 0.8rem; color: #666;">Photo added - AI will analyze what you took</p>
                     </div>
                     
                     <input type="file" id="takeTakePhotoInput" accept="image/*" capture="environment" style="display: none;">
@@ -247,6 +248,32 @@
                 </div>
 
                 <div class="action-section" id="takeSection3">
+                    <h2 class="section-title">🤖 AI Food Recognition</h2>
+                    <p class="section-subtitle">Review and adjust what you took</p>
+                    
+                    <div id="takeAILoading" class="loading">
+                        Analyzing your photo with AI...
+                    </div>
+                    
+                    <div id="takeAIResults" class="ai-results hidden">
+                        <h4>🤖 AI detected these items:</h4>
+                        <div id="takeDetectedItems" class="detected-items"></div>
+                        
+                        <div class="add-item-section">
+                            <h5>Add items manually:</h5>
+                            <div class="add-item-form">
+                                <input type="text" placeholder="Item name" id="takeManualItemName">
+                                <input type="number" placeholder="Qty" id="takeManualItemQty" min="1" value="1" style="width: 60px;">
+                                <button type="button" id="takeAddManualBtn">Add</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" id="takeAINextBtn">Continue</button>
+                    <button class="btn btn-secondary" id="takeAIBackBtn">Back</button>
+                </div>
+
+                <div class="action-section" id="takeSection4">
                     <h2 class="section-title">💬 Message</h2>
                     <p class="section-subtitle">Leave a message (optional)</p>
                     

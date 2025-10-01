@@ -140,9 +140,23 @@ async function switchToMap() {
     searchInput.value = '';
     
     if (!state.map) {
+        // First time - initialize map
         await initializeMap();
     } else {
-        await loadPatakasOnMap();
+        // Returning to map - fix Leaflet size calculation
+        // Small delay to ensure DOM is fully rendered
+        setTimeout(() => {
+            try {
+                // Tell Leaflet to recalculate container dimensions
+                state.map.invalidateSize();
+                console.log('✅ Map size recalculated');
+                
+                // Reload markers to ensure they're properly positioned
+                loadPatakasOnMap();
+            } catch (error) {
+                console.error('Error refreshing map:', error);
+            }
+        }, 100);
     }
 }
 
@@ -168,7 +182,7 @@ function switchToDonate() {
     hideAllViews();
     document.getElementById('donateView').classList.remove('hidden');
     
-    // Reset flow - will be imported from donate-workflow.js in Step 3
+    // Reset flow - will be imported from donate-workflow.js
     if (typeof window.resetDonateFlow === 'function') {
         window.resetDonateFlow();
     }
@@ -181,7 +195,7 @@ function switchToTake() {
     hideAllViews();
     document.getElementById('takeView').classList.remove('hidden');
     
-    // Reset flow - will be imported from take-workflow.js in Step 4
+    // Reset flow - will be imported from take-workflow.js
     if (typeof window.resetTakeFlow === 'function') {
         window.resetTakeFlow();
     }
@@ -194,7 +208,7 @@ function switchToReport() {
     hideAllViews();
     document.getElementById('reportView').classList.remove('hidden');
     
-    // Reset flow - will be imported from report-workflow.js in Step 5
+    // Reset flow - will be imported from report-workflow.js
     if (typeof window.resetReportFlow === 'function') {
         window.resetReportFlow();
     }
@@ -228,7 +242,7 @@ function setupEventListeners() {
     document.getElementById('searchInput').addEventListener('input', handleSearch);
 
     // Note: Photo handlers and workflow event listeners are in respective workflow files
-    // These will be properly wired in Steps 3-7
+    // These will be properly wired in workflow modules
 }
 
 function handleSearch(e) {
@@ -267,7 +281,7 @@ function handleSearch(e) {
 setInterval(async () => {
     try {
         const response = await fetch(`${API_BASE_URL}/getCupboards`, {
-            method: 'HEAD', // Use HEAD to reduce bandwidth
+            method: 'GET', // Fixed: Changed from HEAD to GET (API doesn't support HEAD)
             timeout: 5000
         });
         if (response.ok) {
