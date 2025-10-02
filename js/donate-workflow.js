@@ -20,6 +20,16 @@ function resetDonateFlow() {
     
     state.selectedPataka = null;
     state.actionData = {};
+    
+// Clear photo preview (but keep container visible for next photo)
+    const photoPreview = document.getElementById('donatePhotoPreview');
+    if (photoPreview) photoPreview.src = '';
+    
+    // Clear file inputs
+    const takePhotoInput = document.getElementById('donateTakePhotoInput');
+    const selectPhotoInput = document.getElementById('donateSelectPhotoInput');
+    if (takePhotoInput) takePhotoInput.value = '';
+    if (selectPhotoInput) selectPhotoInput.value = '';
 }
 
 // Navigation functions
@@ -42,20 +52,38 @@ async function analyzeImageWithAI(imageFile) {
         console.log('File size:', imageFile.size);
         console.log('File type:', imageFile.type);
         
-        // For now, return mock data since CV API keys are removed
-        console.log('Using mock AI data for demo');
-        return {
-            tags: [
-                { name: 'banana', confidence: 0.84 },
-                { name: 'apple', confidence: 0.78 },
-                { name: 'vegetable', confidence: 0.65 }
-            ]
-        };
-    } catch (error) {
-        console.error('AI analysis error details:', error);
+        // Convert image to ArrayBuffer for backend
+        const arrayBuffer = await imageFile.arrayBuffer();
         
-        // Return mock data for demo instead of showing error
-        console.log('Using mock AI data for demo');
+        // Call our backend API (which calls Computer Vision securely)
+        const response = await fetch(`${API_BASE_URL}/analyzeFood`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/octet-stream'
+            },
+            body: arrayBuffer
+        });
+        
+        if (!response.ok) {
+            throw new Error(`API error: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('✅ Computer Vision result:', result);
+        
+        if (result.usingMockData) {
+            console.warn('⚠️ Using mock data - Computer Vision API failed');
+        }
+        
+        return {
+            tags: result.tags || []
+        };
+        
+    } catch (error) {
+        console.error('❌ AI analysis error:', error);
+        
+        // Fallback to mock data
+        console.warn('Using mock data due to error');
         return {
             tags: [
                 { name: 'banana', confidence: 0.84 },
@@ -377,6 +405,9 @@ function setupDonateEventListeners() {
     // Step 4: Submit button
 const submitBtn = document.getElementById('donateSubmitBtn');
 if (submitBtn && !submitBtn.__donateBound) {
+    // Ensure button is enabled at start
+    submitBtn.disabled = false;
+    
     submitBtn.addEventListener('click', async () => {
         // Disable button during submission
         submitBtn.disabled = true;
@@ -387,7 +418,8 @@ if (submitBtn && !submitBtn.__donateBound) {
             // Gather data
             const patakaId = state.selectedPataka.id;
             const comment = document.getElementById('donateComment').value.trim();
-            const items = state.actionData.detectedItems || [];
+            // Filter out items with quantity 0
+            const items = (state.actionData.detectedItems || []).filter(item => item.quantity > 0);
             const photo = state.actionData.photo;
             
             // Validate we have items
