@@ -30,6 +30,13 @@ function resetDonateFlow() {
     const selectPhotoInput = document.getElementById('donateSelectPhotoInput');
     if (takePhotoInput) takePhotoInput.value = '';
     if (selectPhotoInput) selectPhotoInput.value = '';
+    
+    // Reset submit button state
+    const submitBtn = document.getElementById('donateSubmitBtn');
+    if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '🎁 Complete Donation';
+    }
 }
 
 // Navigation functions
@@ -363,12 +370,14 @@ function setupDonateEventListeners() {
     const aiNextBtn = document.getElementById('donateAINextBtn');
     if (aiNextBtn && !aiNextBtn.__donateBound) {
         aiNextBtn.addEventListener('click', () => {
+            console.log('AI Next button clicked - navigating to Step 4');
             document.getElementById('donateSection3').classList.remove('active');
             document.getElementById('donateSection4').classList.add('active');
             
             document.getElementById('donateStep3').classList.remove('active');
             document.getElementById('donateStep3').classList.add('completed');
             document.getElementById('donateStep4').classList.add('active');
+            console.log('Navigation complete - Step 4 should now be visible');
         });
         aiNextBtn.__donateBound = true;
     }
@@ -421,6 +430,9 @@ if (submitBtn && !submitBtn.__donateBound) {
             // Filter out items with quantity 0
             const items = (state.actionData.detectedItems || []).filter(item => item.quantity > 0);
             const photo = state.actionData.photo;
+            
+            console.log('Debug - Items after filter:', items);
+            console.log('Debug - Full actionData:', state.actionData);
             
             // Validate we have items
             if (items.length === 0) {
