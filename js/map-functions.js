@@ -84,7 +84,8 @@ async function fetchCupboards() {
         await getUserLocation();
         
         console.log(`Attempting to fetch cupboards (attempt ${state.dataLoadAttempts})...`);
-        const response = await fetch(`${API_BASE_URL}/getCupboards`, {
+        // FIXED: Added ?includeTest=true to show test pātaka during development
+        const response = await fetch(`${API_BASE_URL}/getCupboards?includeTest=true`, {
             timeout: 60000, // 60 second timeout
         });
         
@@ -95,52 +96,42 @@ async function fetchCupboards() {
         const data = await response.json();
         console.log('Successfully fetched cupboards:', data);
         
-        state.cupboards = data.map(pataka => ({
-            id: pataka.id,
-            name: pataka.name,
-            address: pataka.address,
-            distance: state.userLocation ? 
-                calculateDistance(state.userLocation.lat, state.userLocation.lng, pataka.latitude, pataka.longitude) : 
-                'N/A',
-            status: pataka.status,
-            lastUpdated: formatLastUpdated(pataka.lastUpdated),
-            latitude: pataka.latitude,
-            longitude: pataka.longitude,
-            inventory: (pataka.inventory || []).map(item => {
-                const itemName = item.Name || item.name || '';
-                const itemCategory = item.Category || item.category || '';
-                return { Name: itemName, Category: itemCategory };
-            })
-        }));
-        
-        // Hide loading info on success
-        const loadingInfo = document.getElementById('loadingInfo');
-        if (loadingInfo) {
-            loadingInfo.classList.add('hidden');
+        // Add distance to each pataka based on user location
+        if (state.userLocation) {
+            data.forEach(pataka => {
+                pataka.distance = calculateDistance(
+                    state.userLocation.lat,
+                    state.userLocation.lng,
+                    pataka.latitude,
+                    pataka.longitude
+                );
+            });
+        } else {
+            data.forEach(pataka => {
+                pataka.distance = 'Unknown';
+            });
         }
         
+        state.cupboards = data;
         return state.cupboards;
         
     } catch (error) {
         console.error('Error fetching cupboards:', error);
         
-        // Retry logic for failed requests
-        if (state.dataLoadAttempts < state.maxRetries) {
-            console.log(`Retrying in 5 seconds... (${state.dataLoadAttempts}/${state.maxRetries})`);
-            setTimeout(() => {
-                fetchCupboards();
-            }, 5000);
-        } else {
-            // Show error message after max retries
-            const listContainer = document.getElementById('listView');
-            const loading = document.getElementById('loading');
-            if (loading) loading.style.display = 'none';
-            
+        // Show user-friendly error message
+        const listContainer = document.getElementById('listView');
+        if (listContainer && state.dataLoadAttempts >= state.maxRetries) {
             const errorDiv = document.createElement('div');
             errorDiv.className = 'error-message';
             errorDiv.innerHTML = `
-                <h3>⚠️ Connection Error</h3>
-                <p>Unable to load patakas. Please check your internet connection and try again.</p>
+                <h3 style="color: #f44336; margin-bottom: 10px;">ðŸ"¶ Connection Error</h3>
+                <p>Unable to load pātaka locations. This could be due to:</p>
+                <ul style="text-align: left; margin: 10px 0;">
+                    <li>Slow internet connection</li>
+                    <li>Server cold start (first request can take 60+ seconds)</li>
+                    <li>Network issues</li>
+                </ul>
+                <p>Please check your internet connection and try again.</p>
                 <button onclick="location.reload()" style="margin-top: 10px; padding: 10px 20px; background: #289DA7; color: white; border: none; border-radius: 5px; cursor: pointer;">
                     Retry
                 </button>
@@ -288,62 +279,78 @@ function createCupboardCard(pataka) {
         ${
             hasInventoryArray
                 ? (previewItems.length > 0
-                    ? `<div class="food-preview">
-                           ${
-                               previewItems.map(item => {
-                                   const itemEmoji = getItemEmoji(item.Name, item.Category);
-                                   return `<span class="food-tag">${itemEmoji} ${item.Name}</span>`;
-                               }).join('')
-                           }
-                           ${
-                               pataka.inventory.length > 4
-                                   ? `<span class="food-tag">+${pataka.inventory.length - 4} more</span>`
-                                   : ''
-                           }
+                    ? `<div class="inventory-preview">
+                           ${previewItems.map(item => {
+                               const emoji = getItemEmoji(item.Name, item.Category || 'Other');
+                               return `<span class="inventory-tag">${emoji} ${item.Name} (${item.Quantity || 0})</span>`;
+                           }).join('')}
+                           ${pataka.inventory.length > 4 
+                               ? `<span class="inventory-tag" style="background: #e0e0e0; color: #666;">+${pataka.inventory.length - 4} more</span>` 
+                               : ''}
                        </div>`
-                    : '<div style="color: #999; font-style: italic;">No items currently available</div>'
-                  )
-                : '<div style="color: #999; font-style: italic;">Inventory status is unknown</div>'
+                    : `<div class="empty-message">
+                           <p style="color: #999; font-style: italic; margin: 10px 0;">No items currently available</p>
+                           <p style="color: #666; font-size: 0.9rem;">This pataka appears to be empty. Consider donating something!</p>
+                       </div>`)
+                : `<div class="empty-message">
+                       <p style="color: #999; font-style: italic; margin: 10px 0;">Status unknown</p>
+                       <p style="color: #666; font-size: 0.9rem;">No inventory data available. Please check back later.</p>
+                   </div>`
         }
     `;
 
-    card.addEventListener('click', () => {
-        toggleInventoryDetail(card, pataka);
+    // Add click event to toggle full inventory
+    card.addEventListener('click', (event) => {
+        // Prevent toggle if clicking a button or link
+        if (event.target.tagName === 'BUTTON' || event.target.tagName === 'A') return;
+        
+        const existing = card.querySelector('.inventory-detail');
+        if (existing) {
+            existing.remove();
+        } else {
+            toggleInventoryDetail(card, pataka);
+        }
     });
 
     return card;
 }
 
 function toggleInventoryDetail(card, pataka) {
-    const existingDetail = card.querySelector('.inventory-detail');
-    if (existingDetail) {
-        existingDetail.remove();
+    // Remove any existing detail sections first
+    const existing = card.querySelector('.inventory-detail');
+    if (existing) {
+        existing.remove();
         return;
     }
 
     const detailDiv = document.createElement('div');
-    detailDiv.className = 'inventory-detail show';
+    detailDiv.className = 'inventory-detail';
 
-    const hasInventoryArray = Array.isArray(pataka.inventory);
-    if (hasInventoryArray && pataka.inventory.length > 0) {
+    const hasInventory = Array.isArray(pataka.inventory) && pataka.inventory.length > 0;
+    
+    if (hasInventory) {
+        const groupedByCategory = pataka.inventory.reduce((acc, item) => {
+            const category = item.Category || 'Other';
+            if (!acc[category]) acc[category] = [];
+            acc[category].push(item);
+            return acc;
+        }, {});
+
         detailDiv.innerHTML = `
-            <h4 style="margin: 0 0 10px 0; color: #289DA7;">Inventory:</h4>
-            <div class="inventory-grid">
-                ${
-                    pataka.inventory.map(item => {
-                        const itemEmoji = getItemEmoji(item.Name, item.Category);
-                        return `
-                            <div class="inventory-item">
-                                <span class="item-emoji">${itemEmoji}</span>
-                                <div class="item-name">${item.Name}</div>
-                                <div class="item-count">${item.Quantity || 1} available</div>
-                            </div>
-                        `;
-                    }).join('')
-                }
-            </div>
+            <h4 style="margin: 0 0 10px 0; color: #289DA7;">Full Inventory (${pataka.inventory.length} items)</h4>
+            ${Object.entries(groupedByCategory).map(([category, items]) => `
+                <div style="margin-bottom: 12px;">
+                    <strong style="color: #555;">${category}:</strong>
+                    <ul style="margin: 5px 0; padding-left: 20px; list-style: none;">
+                        ${items.map(item => {
+                            const emoji = getItemEmoji(item.Name, category);
+                            return `<li style="margin: 3px 0;">${emoji} ${item.Name}: <strong>${item.Quantity || 0}</strong></li>`;
+                        }).join('')}
+                    </ul>
+                </div>
+            `).join('')}
         `;
-    } else if (hasInventoryArray && pataka.inventory.length === 0) {
+    } else if (Array.isArray(pataka.inventory)) {
         detailDiv.innerHTML = `
             <h4 style="margin: 0 0 10px 0; color: #999;">No items currently available</h4>
             <p style="color: #666; font-size: 0.9rem;">This pataka appears to be empty. Consider donating something!</p>

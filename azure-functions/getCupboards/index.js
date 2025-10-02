@@ -69,9 +69,8 @@ module.exports = async function (context, req) {
                             fi.LastUpdateUTCDateTime
                         FROM FoodItem fi
                         LEFT JOIN FoodCategory fc ON fi.FoodCategoryId = fc.FoodCategoryId
-                        LEFT JOIN FoodTransaction ft ON fi.FoodItemId = ft.FoodItemId
-                        WHERE fi.PatakaId = @patakaId 
-                        AND fi.IsDeleted = 0
+                        LEFT JOIN FoodTransaction ft ON fi.FoodItemId = ft.FoodItemId AND ft.PatakaId = @patakaId
+                        WHERE fi.IsDeleted = 0
                         GROUP BY fi.FoodItemId, fi.FoodItemName, fc.FoodCategoryName, fi.LastUpdateUTCDateTime
                         HAVING ISNULL(SUM(
                             CASE 
