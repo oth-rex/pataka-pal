@@ -1,5 +1,5 @@
 // Import from config.js
-import { state, getItemEmoji, foodWhitelist } from './config.js';
+import { state, API_BASE_URL, getItemEmoji, foodWhitelist } from './config.js';
 
 // Import from app-core.js
 import { showCustomModal, setActiveTab, switchToMap } from './app-core.js';
@@ -9,6 +9,9 @@ import { stopQRScanner, startQRScanner } from './qr-scanner.js';
 
 // Import from map-functions.js
 import { fetchCupboards } from './map-functions.js';
+
+// Import from photo-utils.js
+import { processAndResizePhoto } from './photo-utils.js';
 
 // Flow reset function
 function resetTakeFlow() {
@@ -26,6 +29,10 @@ function resetTakeFlow() {
 function proceedToTakePhoto() {
     document.getElementById('takeSelectedPatakaName').textContent = state.selectedPataka.name;
     
+    // Store pataka info in actionData for submission
+    state.actionData.selectedPatakaId = state.selectedPataka.id;
+    state.actionData.selectedPataka = state.selectedPataka;
+    
     document.getElementById('takeSection1').classList.remove('active');
     document.getElementById('takeSection1b').classList.remove('active');
     document.getElementById('takeSection2').classList.add('active');
@@ -42,27 +49,45 @@ function showTakeSuccess() {
     document.getElementById('takeStep4').classList.add('completed');
 }
 
-// Computer Vision AI Integration (same as donate workflow)
+// Computer Vision AI Integration
 async function analyzeImageWithAI(imageFile) {
     try {
         console.log('Starting AI analysis...');
         console.log('File size:', imageFile.size);
         console.log('File type:', imageFile.type);
         
-        // For now, return mock data since CV API keys are removed
-        console.log('Using mock AI data for demo');
-        return {
-            tags: [
-                { name: 'banana', confidence: 0.84 },
-                { name: 'apple', confidence: 0.78 },
-                { name: 'vegetable', confidence: 0.65 }
-            ]
-        };
-    } catch (error) {
-        console.error('AI analysis error details:', error);
+        // Convert image to ArrayBuffer for backend
+        const arrayBuffer = await imageFile.arrayBuffer();
         
-        // Return mock data for demo instead of showing error
-        console.log('Using mock AI data for demo');
+        // Call our backend API (which calls Computer Vision securely)
+        const response = await fetch(`${API_BASE_URL}/analyzeFood`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/octet-stream'
+            },
+            body: arrayBuffer
+        });
+        
+        if (!response.ok) {
+            throw new Error(`API error: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('✅ Computer Vision result:', result);
+        
+        if (result.usingMockData) {
+            console.warn('⚠️ Using mock data - Computer Vision API failed');
+        }
+        
+        return {
+            tags: result.tags || []
+        };
+        
+    } catch (error) {
+        console.error('❌ AI analysis error:', error);
+        
+        // Fallback to mock data
+        console.warn('⚠️ Using fallback mock data');
         return {
             tags: [
                 { name: 'banana', confidence: 0.84 },
@@ -127,6 +152,17 @@ function displayTakeAIResults(detectedItems) {
             `;
             container.appendChild(itemDiv);
         });
+        
+        // Add event listeners to quantity inputs
+        const quantityInputs = container.querySelectorAll('.quantity-input');
+        quantityInputs.forEach(input => {
+            input.addEventListener('change', (e) => {
+                const index = parseInt(e.target.dataset.index);
+                const newQuantity = parseInt(e.target.value) || 0;
+                state.actionData.detectedItems[index].quantity = newQuantity;
+                console.log(`Updated item ${index} quantity to ${newQuantity}`);
+            });
+        });
     }
     
     state.actionData.detectedItems = detectedItems;
@@ -174,30 +210,27 @@ async function populatePatakaDropdown(selectId) {
     }
 }
 
-// Photo handling helper
-function handlePhotoSelection(e, previewImgId, previewContainerId) {
+// Photo handling helper - NOW RESIZES IMMEDIATELY
+async function handlePhotoSelection(e, previewImgId, previewContainerId) {
     const file = e.target.files[0];
     if (file) {
-        if (!file.type.startsWith('image/')) {
-            showCustomModal('Invalid File', 'Please select an image file');
+        // Process and resize photo immediately using photo-utils
+        const { resizedBlob, dataURL, error } = await processAndResizePhoto(file);
+        
+        if (error) {
+            showCustomModal('Photo Error', error);
             return;
         }
         
-        if (file.size > 5 * 1024 * 1024) {
-            showCustomModal('File Too Large', 'Image size must be less than 5MB');
-            return;
-        }
+        // Show preview
+        const preview = document.getElementById(previewImgId);
+        const container = document.getElementById(previewContainerId);
+        preview.src = dataURL;
+        container.classList.remove('hidden');
         
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const preview = document.getElementById(previewImgId);
-            const container = document.getElementById(previewContainerId);
-            preview.src = e.target.result;
-            container.classList.remove('hidden');
-        };
-        reader.readAsDataURL(file);
-        
-        state.actionData.photo = file;
+        // Store RESIZED blob (not original file!)
+        state.actionData.photo = resizedBlob;
+        console.log('✅ Stored resized photo for both AI analysis and submission');
     }
 }
 
@@ -389,13 +422,73 @@ function setupTakeEventListeners() {
         commentBackBtn.__takeBound = true;
     }
 
-    // Step 4: Submit button
+// Step 4: Submit button
     const submitBtn = document.getElementById('takeSubmitBtn');
     if (submitBtn && !submitBtn.__takeBound) {
-        submitBtn.addEventListener('click', () => {
-            console.log('Taking submitted');
-            console.log('Items taken:', state.actionData.detectedItems);
-            showTakeSuccess();
+        // Ensure button is enabled at start
+        submitBtn.disabled = false;
+        
+        submitBtn.addEventListener('click', async () => {
+            // Disable button during submission
+            submitBtn.disabled = true;
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Submitting...';
+            
+            try {
+                // Get form data
+                const comment = document.getElementById('takeComment')?.value || '';
+                const items = state.actionData.detectedItems.filter(item => item.quantity > 0);
+                
+                if (items.length === 0) {
+                    throw new Error('No items to submit');
+                }
+                
+                // Determine if this is a test pataka
+                const isTest = state.actionData.selectedPataka?.IsTest || false;
+                
+                console.log('📤 Submitting taking:', {
+                    patakaId: state.actionData.selectedPatakaId,
+                    itemCount: items.length,
+                    hasPhoto: !!state.actionData.photo,
+                    isTest: isTest
+                });
+                
+                // Create FormData for multipart submission
+                const formData = new FormData();
+                formData.append('patakaId', state.actionData.selectedPatakaId);
+                formData.append('userId', ''); // Anonymous for now
+                formData.append('items', JSON.stringify(items));
+                formData.append('comment', comment);
+                formData.append('isTest', isTest.toString());
+                
+                // Add photo if available
+                if (state.actionData.photo) {
+                    formData.append('photo', state.actionData.photo, 'taking.jpg');
+                }
+                
+                // Submit to backend
+                const response = await fetch(`${API_BASE_URL}/SubmitTaking`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(errorText || `HTTP ${response.status}`);
+                }
+                
+                const result = await response.json();
+                console.log('✅ Taking successful:', result);
+                
+                // Show success screen
+                showTakeSuccess();
+                
+            } catch (error) {
+                console.error('❌ Taking failed:', error);
+                showCustomModal('Submission Failed', error.message || 'Please try again');
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            }
         });
         submitBtn.__takeBound = true;
     }
