@@ -79,3 +79,57 @@ export function pickFirstFile(
   }
   return { file, error: null };
 }
+
+/**
+ * NEW FUNCTION: Process and resize photo immediately after selection
+ * This is the single source of truth for photo processing
+ * Returns { resizedBlob, dataURL, error }
+ */
+export async function processAndResizePhoto(file, options = {}) {
+  try {
+    // Validate file
+    if (!file) {
+      return { resizedBlob: null, dataURL: null, error: 'No file provided' };
+    }
+    
+    if (!file.type.startsWith('image/')) {
+      return { resizedBlob: null, dataURL: null, error: 'Please select an image file' };
+    }
+    
+    if (file.size > 5 * 1024 * 1024) {
+      return { resizedBlob: null, dataURL: null, error: 'Image size must be less than 5MB' };
+    }
+    
+    console.log(`📷 Processing photo: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+    
+    // Convert file to dataURL
+    const originalDataURL = await fileToDataURL(file);
+    
+    // Resize the image
+    const resizedBlob = await resizeDataURL(originalDataURL, {
+      maxW: options.maxW || 1600,
+      maxH: options.maxH || 1600,
+      quality: options.quality || 0.85,
+      type: options.type || 'image/jpeg'
+    });
+    
+    // Convert resized blob back to dataURL for preview
+    const resizedDataURL = await blobToDataURL(resizedBlob);
+    
+    console.log(`✅ Photo resized: ${(resizedBlob.size / 1024 / 1024).toFixed(2)}MB`);
+    
+    return {
+      resizedBlob,
+      dataURL: resizedDataURL,
+      error: null
+    };
+    
+  } catch (error) {
+    console.error('❌ Photo processing error:', error);
+    return {
+      resizedBlob: null,
+      dataURL: null,
+      error: 'Failed to process photo'
+    };
+  }
+}
