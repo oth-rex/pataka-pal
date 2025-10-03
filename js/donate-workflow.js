@@ -155,6 +155,17 @@ function displayAIResults(detectedItems, actionType) {
             `;
             container.appendChild(itemDiv);
         });
+        
+        // Add event listeners to quantity inputs
+        const quantityInputs = container.querySelectorAll('.quantity-input');
+        quantityInputs.forEach(input => {
+            input.addEventListener('change', (e) => {
+                const index = parseInt(e.target.dataset.index);
+                const newQuantity = parseInt(e.target.value) || 0;
+                state.actionData.detectedItems[index].quantity = newQuantity;
+                console.log(`Updated item ${index} quantity to ${newQuantity}`);
+            });
+        });
     }
     
     state.actionData.detectedItems = detectedItems;

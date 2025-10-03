@@ -131,7 +131,16 @@ module.exports = async function (context, req) {
         let photoUrl = null;
         if (photoFile && photoFile.data && photoFile.data.length > 0) {
             try {
-                const blobServiceClient = BlobServiceClient.fromConnectionString(process.env.AZURE_STORAGE_CONNECTION_STRING);
+                // Use available storage connection string variable
+const storageConnectionString = process.env.AZURE_STORAGE_CONNECTION_STRING 
+    || process.env.BLOB_CONN_STRING 
+    || process.env.AzureWebJobsStorage;
+
+if (!storageConnectionString) {
+    throw new Error('No storage connection string found in environment variables');
+}
+
+const blobServiceClient = BlobServiceClient.fromConnectionString(storageConnectionString);
                 const containerName = isTest ? 'donation-photos-test' : 'donation-photos';
                 const containerClient = blobServiceClient.getContainerClient(containerName);
                 
