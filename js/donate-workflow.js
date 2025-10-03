@@ -1,7 +1,10 @@
 // Import from config.js
 import { state, API_BASE_URL, getItemEmoji, foodWhitelist } from './config.js';
 
-// Import from app-core.js
+// Import from photo-utils.js
+import { processAndResizePhoto } from './photo-utils.js';
+
+// Import from app-core.js+
 import { showCustomModal, setActiveTab, switchToMap } from './app-core.js';
 
 // Import from qr-scanner.js
@@ -220,30 +223,27 @@ function addManualItem(name, quantity, actionType) {
     displayAIResults(state.actionData.detectedItems, actionType);
 }
 
-// Photo handling helper
-function handlePhotoSelection(e, previewImgId, previewContainerId) {
+// Photo handling helper - NOW RESIZES IMMEDIATELY
+async function handlePhotoSelection(e, previewImgId, previewContainerId) {
     const file = e.target.files[0];
     if (file) {
-        if (!file.type.startsWith('image/')) {
-            showCustomModal('Invalid File', 'Please select an image file');
+        // Process and resize photo immediately using photo-utils
+        const { resizedBlob, dataURL, error } = await processAndResizePhoto(file);
+        
+        if (error) {
+            showCustomModal('Photo Error', error);
             return;
         }
         
-        if (file.size > 5 * 1024 * 1024) {
-            showCustomModal('File Too Large', 'Image size must be less than 5MB');
-            return;
-        }
+        // Show preview
+        const preview = document.getElementById(previewImgId);
+        const container = document.getElementById(previewContainerId);
+        preview.src = dataURL;
+        container.classList.remove('hidden');
         
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const preview = document.getElementById(previewImgId);
-            const container = document.getElementById(previewContainerId);
-            preview.src = e.target.result;
-            container.classList.remove('hidden');
-        };
-        reader.readAsDataURL(file);
-        
-        state.actionData.photo = file;
+        // Store RESIZED blob (not original file!)
+        state.actionData.photo = resizedBlob;
+        console.log('✅ Stored resized photo for both AI analysis and submission');
     }
 }
 
