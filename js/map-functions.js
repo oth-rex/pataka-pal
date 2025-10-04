@@ -34,12 +34,7 @@ async function initializeMap() {
             console.error('Tile loading error:', error);
         });
 
-        tileLayer.on('tileload', function() {
-            // Hide loading indicator when first tiles load
-            setTimeout(() => {
-                mapLoading.classList.add('hidden');
-            }, 1000);
-        });
+
 
         tileLayer.addTo(state.map);
 
@@ -54,10 +49,8 @@ async function initializeMap() {
         // Load pataka locations
         await loadPatakasOnMap();
 
-        // Hide loading after setup complete
-        setTimeout(() => {
-            mapLoading.classList.add('hidden');
-        }, 2000);
+// Don't hide loading here - let fetchCupboards handle it
+        // Loading will be hidden in renderCupboards() after data loads
 
     } catch (error) {
         console.error('Error initializing map:', error);
@@ -68,6 +61,7 @@ async function initializeMap() {
 
 async function fetchCupboards() {
     if (state.isLoading) return state.cupboards;
+    
     
     try {
         state.isLoading = true;
@@ -82,7 +76,8 @@ async function fetchCupboards() {
         }
         
         await getUserLocation();
-        
+
+
         console.log(`Attempting to fetch cupboards (attempt ${state.dataLoadAttempts})...`);
         // FIXED: Added ?includeTest=true to show test pātaka during development
         const response = await fetch(`${API_BASE_URL}/getCupboards?includeTest=true`, {
@@ -141,7 +136,7 @@ async function fetchCupboards() {
         
         state.cupboards = [];
         return state.cupboards;
-    } finally {
+} finally {
         state.isLoading = false;
     }
 }
@@ -197,7 +192,13 @@ async function loadPatakasOnMap() {
             });
         }
 
-        console.log(`Loaded ${state.cupboards.length} pataka markers on map`);
+console.log(`Loaded ${state.cupboards.length} pataka markers on map`);
+
+// Hide loading message now that markers are displayed
+const mapLoading = document.getElementById('mapLoading');
+if (mapLoading && state.cupboards.length > 0) {
+    mapLoading.classList.add('hidden');
+}
 
     } catch (error) {
         console.error('Error loading map locations:', error);
@@ -208,10 +209,12 @@ function renderCupboards(filteredCupboards = state.cupboards) {
     const listContainer = document.getElementById('listView');
     const loading = document.getElementById('loading');
     const loadingInfo = document.getElementById('loadingInfo');
+    const mapLoading = document.getElementById('mapLoading');
     
-    // Hide loading indicators
-    if (loading) loading.style.display = 'none';
+// Hide loading indicators
+    if (loading) loading.classList.add('hidden');
     if (loadingInfo) loadingInfo.classList.add('hidden');
+    if (mapLoading) mapLoading.classList.add('hidden');
     
     // Remove existing cards
     const existingCards = listContainer.querySelectorAll('.cupboard-card');
