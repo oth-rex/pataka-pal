@@ -13,3 +13,5 @@ docs/
 *.log
 .env
 *.env.local
+
+# Test deployment - October 7, 2025
