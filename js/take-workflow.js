@@ -110,7 +110,7 @@ function filterFoodItems(aiResult) {
             name: tag.name,
             confidence: tag.confidence,
             emoji: getItemEmoji(tag.name),
-            quantity: 1
+            quantity: tag.quantity || 1
         }));
 }
 
