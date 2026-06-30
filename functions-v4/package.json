@@ -1,0 +1,18 @@
+{
+    "name": "pataka-pal-functions",
+    "version": "2.0.0",
+    "description": "PatakaPal Azure Functions backend (v4 Node programming model)",
+    "main": "src/functions/*.js",
+    "engines": {
+        "node": ">=22"
+    },
+    "scripts": {
+        "start": "func start"
+    },
+    "dependencies": {
+        "@azure/functions": "^4.5.0",
+        "mssql": "^11.0.1",
+        "@azure/storage-blob": "^12.24.0",
+        "@azure/communication-email": "^1.0.0"
+    }
+}
