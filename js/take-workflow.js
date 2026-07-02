@@ -63,7 +63,7 @@ async function analyzeImageWithAI(imageFile) {
         const response = await fetch(`${API_BASE_URL}/analyzeFood`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/octet-stream'
+                'Content-Type': 'text/plain'
             },
             body: arrayBuffer
         });
