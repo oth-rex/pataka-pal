@@ -15,7 +15,7 @@ const state = {
 };
 
 // Configuration constants
-const API_BASE_URL = 'https://oth-pataka-api-facpcna9c9hjc5dh.australiaeast-01.azurewebsites.net/api';
+const API_BASE_URL = 'https://oth-pataka-api-v4-cegydyaacugrcygz.australiaeast-01.azurewebsites.net/api';
 const COMPUTER_VISION_ENDPOINT = 'https://communitypantry-vision.cognitiveservices.azure.com/';
 
 // Food emoji mapping
