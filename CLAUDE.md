@@ -35,7 +35,6 @@ index.html, css/styles.css
 js/               config.js (API_BASE_URL) · app-core.js · qr-scanner.js · map-functions.js ·
                   photo-utils.js · donate-workflow.js · take-workflow.js · report-workflow.js
 functions-v4/     LIVE backend — v4 model, deploys to Azure Function App oth-pataka-api-v4
-azure-functions/  OLD backend (v3, being decommissioned)
 docs/             git-ignored planning docs (see "Start here")
 .github/workflows/  CI/CD (see Deploys below)
 ```
@@ -67,7 +66,7 @@ Both are automatic on push to `main` — **merging to `main` deploys to producti
 
 ## Architecture notes that matter
 
-- **v3 and v4 Azure Functions programming models cannot coexist in one Function App** — one v4 function makes the host ignore all v3 (`function.json`-based) functions. This is why the whole backend had to move together into `functions-v4/`, and why `azure-functions/` (v3) now runs as a separate, decommissioned app rather than being edited in place.
+- **v3 and v4 Azure Functions programming models cannot coexist in one Function App** — one v4 function makes the host ignore all v3 (`function.json`-based) functions. This is why the whole backend had to move together into a new `functions-v4/` app rather than being migrated in place. The old v3 app (`oth-pataka-api`) and its `azure-functions/` code have since been decommissioned and deleted.
 - **CORS on Flex Consumption is handled in code, not the platform.** Setting allowed origins via the Azure portal or `az functionapp cors` does nothing — Flex intercepts the browser's preflight `OPTIONS` request and returns a bare 204 before our code runs. CORS headers are set in `functions-v4/src/shared/cors.js`; don't remove them. Consequently, **every frontend→backend request must stay "simple"** (no CORS preflight): GET, or POST with `Content-Type: text/plain` or `multipart/form-data`, no custom headers. A preflighted request will silently fail on this app.
 - SQL resume-retry logic lives in `functions-v4/src/shared/db.js` to absorb the serverless database's auto-pause/resume delay.
 
@@ -75,5 +74,4 @@ Both are automatic on push to `main` — **merging to `main` deploys to producti
 
 - **Never modify the live database directly.** Any schema or data change goes into a `.sql` file for Rex to review and run himself — do not connect and execute against `PatakaPalDB` directly.
 - **Never push or merge to `main`** for a backend or frontend change without first validating it via a PR preview (see Deploys above) — a merge to `main` ships straight to production users.
-- Don't touch `azure-functions/` (the old v3 backend) for new work; it's fallback-only and scheduled for deletion.
 - **Don't create, delete, or reconfigure Azure resources** — Rex manages those in the Azure portal himself.
