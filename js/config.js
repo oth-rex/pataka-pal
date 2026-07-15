@@ -29,16 +29,6 @@ const emojiMap = {
     'vegetable': '🥬', 'fruit': '🍎', 'food': '🍽️'
 };
 
-// Food whitelist for filtering AI results
-const foodWhitelist = [
-    'apple', 'banana', 'orange', 'lemon', 'lime', 'pear', 'grape', 'berry',
-    'broccoli', 'carrot', 'potato', 'onion', 'tomato', 'lettuce', 'cabbage',
-    'bread', 'rice', 'pasta', 'cereal', 'noodle', 'flour',
-    'milk', 'cheese', 'egg', 'yogurt', 'butter',
-    'chicken', 'beef', 'fish', 'tuna', 'salmon',
-    'bean', 'corn', 'pea', 'soup', 'sauce', 'vegetable', 'fruit'
-];
-
 // Utility functions for configuration data
 function getItemEmoji(itemName, category) {
     const name = itemName.toLowerCase();
@@ -58,7 +48,6 @@ export {
     API_BASE_URL,
     COMPUTER_VISION_ENDPOINT,
     emojiMap,
-    foodWhitelist,
     getItemEmoji,
     getStatusColor
 };

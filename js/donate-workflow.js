@@ -1,5 +1,5 @@
 // Import from config.js
-import { state, API_BASE_URL, getItemEmoji, foodWhitelist } from './config.js';
+import { state, API_BASE_URL, getItemEmoji } from './config.js';
 
 // Import from photo-utils.js
 import { processAndResizePhoto } from './photo-utils.js';
@@ -108,10 +108,7 @@ function filterFoodItems(aiResult) {
     if (!aiResult.tags) return [];
     
     return aiResult.tags
-        .filter(tag => {
-            const name = tag.name.toLowerCase();
-            return foodWhitelist.some(food => name.includes(food)) && tag.confidence > 0.5;
-        })
+        .filter(tag => tag.confidence > 0.5)
         .map(tag => ({
             name: tag.name,
             confidence: tag.confidence,
