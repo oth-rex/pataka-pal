@@ -14,12 +14,33 @@ import { fetchCupboards } from './map-functions.js';
 function resetReportFlow() {
     document.querySelectorAll('#reportView .action-section').forEach(section => section.classList.remove('active'));
     document.getElementById('reportStep1').classList.add('active');
-    
+
     document.querySelectorAll('#reportView .step').forEach(step => step.classList.remove('active', 'completed'));
     document.getElementById('step1').classList.add('active');
-    
+
     state.selectedPataka = null;
     state.actionData = {};
+
+    // Clear form fields so the next report doesn't inherit the previous one's values
+    const descEl = document.getElementById('issueDescription');
+    if (descEl) descEl.value = '';
+    const nameEl = document.getElementById('contactName');
+    if (nameEl) nameEl.value = '';
+    const contactEl = document.getElementById('contactInfo');
+    if (contactEl) contactEl.value = '';
+
+    const takeEl = document.getElementById('takePhotoInput');
+    if (takeEl) takeEl.value = '';
+    const selectEl = document.getElementById('selectPhotoInput');
+    if (selectEl) selectEl.value = '';
+
+    const preview = document.getElementById('photoPreview');
+    if (preview) preview.src = '';
+    const previewContainer = document.getElementById('photoPreviewContainer');
+    if (previewContainer) previewContainer.classList.add('hidden');
+
+    const validation = document.getElementById('reportValidation');
+    if (validation) validation.classList.add('hidden');
 }
 
 // Navigation functions
